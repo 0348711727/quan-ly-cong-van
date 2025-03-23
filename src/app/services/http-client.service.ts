@@ -14,7 +14,7 @@ export class HttpClientService {
       headers: baseHeaders,
     });
   }
-  comonPost(props: { url: string; headers: {}; params: {}; body: {} }) {
+  comonPost(props: { url: string; headers?: {}; params?: {}; body: {} }) {
     const { url, headers, params, body } = props;
     return this.httpClient.post(url, body, { headers: baseHeaders });
   }

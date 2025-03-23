@@ -1,27 +1,16 @@
 import { Component, inject, signal, WritableSignal } from '@angular/core';
-import { MatLabel } from '@angular/material/form-field';
 import { MatTableModule } from '@angular/material/table';
+import { Router } from '@angular/router';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
 import { MessageService } from 'primeng/api';
 import { environment } from '../../../environments/environment';
 import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
-import { CcDatePickerComponent } from '../../commons/cc-date-picker/cc-date-picker.component';
-import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
-import { CcTableComponent } from '../../commons/cc-table/cc-table.component';
 import { HttpClientService } from '../../services/http-client.service';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [
-    L10nTranslateAsyncPipe,
-    CcInputComponent,
-    CcDatePickerComponent,
-    MatLabel,
-    CcButtonComponent,
-    CcTableComponent,
-    MatTableModule,
-  ],
+  imports: [L10nTranslateAsyncPipe, MatTableModule, CcButtonComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
   providers: [MessageService],
@@ -29,12 +18,7 @@ import { HttpClientService } from '../../services/http-client.service';
 export class HomeComponent {
   protected httpClient: HttpClientService = inject(HttpClientService);
   protected messageService: MessageService = inject(MessageService);
-  // columns: WritableSignal<Column[]> = signal([
-  //   { label: 'position' },
-  //   { label: 'name' },
-  //   { label: 'weight' },
-  //   { label: 'symbol' },
-  // ]);
+  protected router: Router = inject(Router);
   columns: WritableSignal<string[]> = signal([
     'stt',
     'documentNumber',
@@ -61,5 +45,8 @@ export class HomeComponent {
           this.document.set(data.document);
         },
       });
+  }
+  addDocument() {
+    this.router.navigateByUrl('add-document');
   }
 }

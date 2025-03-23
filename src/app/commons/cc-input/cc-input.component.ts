@@ -4,6 +4,7 @@ import {
   input,
   InputSignal,
   output,
+  OutputEmitterRef,
 } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -29,11 +30,12 @@ export class CcInputComponent {
   placeholder: InputSignal<string> = input('');
   name: InputSignal<string> = input('');
   type: InputSignal<string> = input('text');
-  onInputChange = output<string>();
+  valueChange: OutputEmitterRef<any> = output<any>();
   require: InputSignal<boolean> = input(false);
   label: InputSignal<string> = input('abc');
   isDisabled: InputSignal<boolean> = input(false);
   regexStr = '^[0-9]+$';
+  errorMessage: InputSignal<string> = input('');
   // @HostListener('document:keydown', ['$event']) onKeyDown(
   //   event: KeyboardEvent
   // ) {
@@ -48,4 +50,7 @@ export class CcInputComponent {
   //   console.log('there');
   //   return;
   // }
+  onValueChange(event: string) {
+    this.valueChange.emit(event);
+  }
 }

@@ -1,19 +1,8 @@
-<!-- <div class="inputGroup"> -->
-<!-- <input type="text" [required]="require" autocomplete="on" [type]="type" [placeholder]="placeholder"
-    [(ngModel)]="inputValue" (ngModelChange)="onInputChange.emit($event)" [maxlength]="maxLength">
-    @if (name) {
-      <label for="name">{{name | translateAsync}}</label>
-    } -->
-<!-- <mat-form-field class="example-full-width">
-      <mat-label>{{label()}}</mat-label>
-      <input [required]="require()" autocomplete="on" [type]="type()" [placeholder]="placeholder()"
-    [(ngModel)]="inputValue" (ngModelChange)="onInputChange.emit($event)" [maxlength]="maxLength()" />
-    </mat-form-field> -->
-<!-- </div> -->
-
 <mat-form-field class="example-full-width">
   <mat-label>{{ label() | translateAsync }}</mat-label>
   <input
+    [ngModel]="value()"
+    (ngModelChange)="onValueChange($event)"
     matInput
     [disabled]="isDisabled()"
     [required]="require()"
@@ -24,3 +13,4 @@
     [maxLength]="maxLength()"
   />
 </mat-form-field>
+<mat-error>{{ errorMessage() }}</mat-error>

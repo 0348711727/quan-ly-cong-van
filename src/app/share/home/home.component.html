@@ -1,66 +1,9 @@
-<!-- <div class="main-container p-3">
-  <mat-label class="main-container__header">{{
-    "Tiếp Nhận văn bản đến"
-  }}</mat-label>
-  <div class="main-container__formInput p-3">
-    <div class="row">
-      <div class="col-3">
-        <cc-input
-          name="documentNumber"
-          id="documentNumber"
-          label="documentNumber"
-          [isDisabled]="true"
-          [value]="document()[0].id"
-        ></cc-input>
-      </div>
-      <div class="col-3">
-        <cc-date-picker
-          [model]="document()[0].date"
-          label="receivedDate"
-        ></cc-date-picker>
-      </div>
-      <div class="col-3">
-        <cc-date-picker label="issuedDate"></cc-date-picker>
-      </div>
-      <div class="col-3">
-        <cc-input label="referenceNumber"></cc-input>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-3">
-        <cc-input label="priority"></cc-input>
-      </div>
-      <div class="col-3">
-        <cc-input label="type"></cc-input>
-      </div>
-      <div class="col-3">
-        <cc-input label="author"></cc-input>
-      </div>
-      <div class="col-3">
-        <cc-input label="summary"></cc-input>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-3">
-        <cc-input label="receivingMethod"></cc-input>
-      </div>
-      <div class="col-3">
-        <cc-input label="attachments"></cc-input>
-      </div>
-      <div class="col-3">
-        <cc-date-picker label="dueDate"></cc-date-picker>
-      </div>
-      <div class="col-3">
-        <cc-input label="processingOpinion"></cc-input>
-      </div>
-    </div>
-    <div class="button d-flex justify-content-end p-2">
-      <cc-button mode="secondary" title="cancel"></cc-button>
-      <cc-button title="save"></cc-button>
-    </div>
-  </div>
-</div> -->
 <div class="p-3">
+  <div class="d-flex justify-content-end">
+    <cc-button (onClick)="addDocument()"
+      >{{ "addDocument" | translateAsync }}
+    </cc-button>
+  </div>
   <table
     mat-table
     [dataSource]="document()"

@@ -54,6 +54,7 @@ input[type='number'] {
 }
 .mat-mdc-form-field {
   width: 100%;
+  margin-bottom: -20px;
   background-color: inherit;
   div.mat-mdc-text-field-wrapper.mdc-text-field.mdc-text-field--filled{
     --mdc-filled-text-field-container-color: white;

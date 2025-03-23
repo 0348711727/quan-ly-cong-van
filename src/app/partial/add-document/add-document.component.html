@@ -1,0 +1,106 @@
+<div class="main-container p-3">
+  <mat-label class="main-container__header">{{
+    "Tiếp Nhận văn bản đến"
+  }}</mat-label>
+  <div class="main-container__formInput p-3">
+    <div class="row">
+      <div class="col-3">
+        <cc-date-picker
+          [errorMessage]="this.error()?.['receivedDate']?.[0]?.message"
+          (valueChange)="onChange('receivedDate', $event)"
+          label="receivedDate"
+        ></cc-date-picker>
+      </div>
+      <div class="col-3">
+        <cc-date-picker
+          [errorMessage]="this.error()?.['issuedDate']?.[0]?.message"
+          (valueChange)="onChange('issuedDate', $event)"
+          label="issuedDate"
+        ></cc-date-picker>
+      </div>
+      <div class="col-3">
+        <cc-input
+          [errorMessage]="this.error()?.['referenceNumber']?.[0]?.message"
+          (valueChange)="onChange('referenceNumber', $event)"
+          label="referenceNumber"
+        ></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-input
+          [errorMessage]="this.error()?.['priority']?.[0]?.message"
+          (valueChange)="onChange('priority', $event)"
+          label="priority"
+        ></cc-input>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3">
+        <cc-input
+          [errorMessage]="this.error()?.['type']?.[0]?.message"
+          (valueChange)="onChange('type', $event)"
+          label="type"
+        ></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-input
+          [errorMessage]="this.error()?.['author']?.[0]?.message"
+          (valueChange)="onChange('author', $event)"
+          label="author"
+        ></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-input
+          [errorMessage]="this.error()?.['summary']?.[0]?.message"
+          (valueChange)="onChange('summary', $event)"
+          label="summary"
+        ></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-input
+          [errorMessage]="this.error()?.['receivingMethod']?.[0]?.message"
+          (valueChange)="onChange('receivingMethod', $event)"
+          label="receivingMethod"
+        ></cc-input>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3">
+        <cc-date-picker
+          [errorMessage]="this.error()?.['dueDate']?.[0]?.message"
+          (valueChange)="onChange('dueDate', $event)"
+          label="dueDate"
+        ></cc-date-picker>
+      </div>
+      <div class="col-3">
+        <cc-input
+          [errorMessage]="this.error()?.['processingOpinion']?.[0]?.message"
+          (valueChange)="onChange('processingOpinion', $event)"
+          label="processingOpinion"
+        ></cc-input>
+      </div>
+      <div class="col-3">
+        <!-- <cc-input
+          [errorMessage]="this.error()?.['attachments']?.[0]?.message"
+          (valueChange)="onChange('attachments', $event)"
+          label="attachments"
+        ></cc-input> -->
+        <p-fileupload
+          #fu
+          mode="basic"
+          chooseLabel="Choose"
+          chooseIcon="pi pi-upload"
+          name="demo[]"
+          url="https://www.primefaces.org/cdn/api/upload.php"
+          accept="image/*"
+          maxFileSize="1000000"
+          (onUpload)="onUpload($event)"
+        />
+        <p-button label="Upload" (onClick)="fu.upload()" severity="secondary" />
+      </div>
+    </div>
+    <div class="button d-flex justify-content-end p-2">
+      <cc-button mode="secondary" title="cancel"></cc-button>
+      <cc-button title="save" (onClick)="save()"></cc-button>
+    </div>
+  </div>
+</div>
