@@ -1,0 +1,15 @@
+{
+  "": "",
+  "documentNumber": "Số đến",
+  "receivedDate": "Ngày đến",
+  "issuedDate": "Ngày văn bản",
+  "referenceNumber": "Số/ký hiệu",
+  "priority": "Độ khẩn",
+  "type": "Loại văn bản",
+  "author": "Tác giả",
+  "summary": "Trích yếu",
+  "receivingMethod": "Phương thức nhận",
+  "attachments": "Đính kèm tệp nội dung",
+  "dueDate": "Hạn xử lý",
+  "processingOpinion": "Ý kiến xử lý"
+}

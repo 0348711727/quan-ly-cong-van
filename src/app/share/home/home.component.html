@@ -1,0 +1,138 @@
+<!-- <div class="main-container p-3">
+  <mat-label class="main-container__header">{{
+    "Tiếp Nhận văn bản đến"
+  }}</mat-label>
+  <div class="main-container__formInput p-3">
+    <div class="row">
+      <div class="col-3">
+        <cc-input
+          name="documentNumber"
+          id="documentNumber"
+          label="documentNumber"
+          [isDisabled]="true"
+          [value]="document()[0].id"
+        ></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-date-picker
+          [model]="document()[0].date"
+          label="receivedDate"
+        ></cc-date-picker>
+      </div>
+      <div class="col-3">
+        <cc-date-picker label="issuedDate"></cc-date-picker>
+      </div>
+      <div class="col-3">
+        <cc-input label="referenceNumber"></cc-input>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3">
+        <cc-input label="priority"></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-input label="type"></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-input label="author"></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-input label="summary"></cc-input>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3">
+        <cc-input label="receivingMethod"></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-input label="attachments"></cc-input>
+      </div>
+      <div class="col-3">
+        <cc-date-picker label="dueDate"></cc-date-picker>
+      </div>
+      <div class="col-3">
+        <cc-input label="processingOpinion"></cc-input>
+      </div>
+    </div>
+    <div class="button d-flex justify-content-end p-2">
+      <cc-button mode="secondary" title="cancel"></cc-button>
+      <cc-button title="save"></cc-button>
+    </div>
+  </div>
+</div> -->
+<div class="p-3">
+  <table
+    mat-table
+    [dataSource]="document()"
+    class="mat-elevation-z8 demo-table"
+  >
+    <ng-container matColumnDef="stt">
+      <th mat-header-cell *matHeaderCellDef>{{ "" }}</th>
+      <td mat-cell *matCellDef="let element">{{ element.position }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="documentNumber">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "documentNumber" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.documentNumber }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="receivedDate">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "receivedDate" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.receivedDate }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="documentInfomation">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "documentInfomation" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.author }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="priority">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "priority" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.priority }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="dueDate">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "dueDate" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.dueDate }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="sender">
+      <th mat-header-cell *matHeaderCellDef>{{ "sender" | translateAsync }}</th>
+      <td mat-cell *matCellDef="let element">{{ element.sender }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="content">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "content" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.content }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="process">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "process" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.process }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="processOperation">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "processOperation" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.processOperation }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+  </table>
+</div>

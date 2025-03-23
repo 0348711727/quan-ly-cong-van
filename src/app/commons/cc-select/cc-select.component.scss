@@ -1,0 +1,41 @@
+@import "../variable";
+
+.custom-select {
+  position: relative;
+  min-width: 200px;
+  width: 100%;
+  user-select: none;
+  z-index: 1;
+}
+
+.selected-option {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.options-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-top: none;
+  z-index: 1000;
+  background: white;
+  display: none;
+  max-height: 162px;
+  overflow: auto;
+}
+
+.option {
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.option:hover {
+  background-color: $yellow;
+}
