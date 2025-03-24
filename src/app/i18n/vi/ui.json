@@ -19,5 +19,7 @@
   "content": "Nội dung",
   "process": "Xử lý",
   "processOperation": "Quá trình xử lý",
-  "addDocument": "Soạn công văn"
+  "addDocument": "Soạn công văn",
+  "incomingDocuments": "Công văn đến",
+  "outcomingDocuments": "Công văn đi"
 }
