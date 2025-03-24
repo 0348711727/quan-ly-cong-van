@@ -49,4 +49,8 @@ export class HomeComponent {
   addDocument() {
     this.router.navigateByUrl('add-document');
   }
+  
+  searchDocument() {
+    this.router.navigateByUrl('search-document');
+  }
 }

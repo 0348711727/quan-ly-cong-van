@@ -8,10 +8,12 @@ const baseHeaders = new HttpHeaders().set('X-Debug-Level', 'minimal');
 export class HttpClientService {
   protected httpClient = inject(HttpClient);
 
-  comonGet(props: { url: string; headers?: {}; params?: {} }) {
-    const { url, headers, params } = props;
+  comonGet(props: { url: string; headers?: {}; params?: {}; responseType?: 'json' | 'blob' | 'text' }) {
+    const { url, headers, params, responseType } = props;
     return this.httpClient.get(url, {
       headers: baseHeaders,
+      params: params,
+      responseType: responseType as any
     });
   }
   comonPost(props: { url: string; headers?: {}; params?: {}; body: {} }) {

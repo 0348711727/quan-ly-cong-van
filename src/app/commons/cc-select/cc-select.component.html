@@ -1,12 +1,16 @@
-<div class="custom-select" [style.width]="width+'px'">
-  <div class="selected-option" (click)="toggleDropdown()">{{value || 'Select...' | translateAsync}}</div>
-  @if (options.length > 0) {
-    <div #dropdown class="options-container">
-      @for (option of options; track option) {
-        <div (click)="selectValue(option.value)" class="option">
-          {{option.label}}
-        </div>
-      }
+<div class="cc-select-wrapper">
+  <label *ngIf="label" class="form-label">{{ label }}</label>
+  <div class="custom-select" [style.width]="width ? width+'px' : '100%'">
+    <div class="selected-option" (click)="toggleDropdown()">
+      <ng-container *ngIf="value; else defaultText">
+        {{ options | findLabel:value }}
+      </ng-container>
+      <ng-template #defaultText>Chọn...</ng-template>
     </div>
-  }
+    <div #dropdown class="options-container" style="display: none;">
+      <div *ngFor="let option of options" (click)="selectValue(option.value)" class="option">
+        {{option.label}}
+      </div>
+    </div>
+  </div>
 </div>

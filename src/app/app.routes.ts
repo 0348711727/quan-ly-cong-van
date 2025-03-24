@@ -12,6 +12,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'search-document',
+    loadComponent: () =>
+      import('./partial/search-document/search-document.component').then(
+        (com) => com.SearchDocumentComponent
+      ),
+  },
+  {
     path: '**',
     loadComponent: () =>
       import('./share/not-found-404/not-found-404.component').then(

@@ -52,10 +52,6 @@ const ELEMENT_DATA: PeriodicElement[] = [
   selector: 'cc-table',
   imports: [
     MatTableModule,
-    NgStyle,
-    NgClass,
-    L10nTranslateAsyncPipe,
-    NgTemplateOutlet,
   ],
   templateUrl: './cc-table.component.html',
   styleUrl: './cc-table.component.scss',
