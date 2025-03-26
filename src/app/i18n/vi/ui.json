@@ -21,5 +21,7 @@
   "processOperation": "Quá trình xử lý",
   "addDocument": "Soạn công văn",
   "incomingDocuments": "Công văn đến",
-  "outcomingDocuments": "Công văn đi"
+  "outcomingDocuments": "Công văn đi",
+  "dateRelease": "Ngày phát hành văn bản",
+  "internalRecieve": "Nơi nhận nội bộ"
 }

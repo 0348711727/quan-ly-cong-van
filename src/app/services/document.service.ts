@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClientService } from './http-client.service';
 import { environment } from '../../environments/environment';
+import { HttpClientService } from './http-client.service';
 
 export interface SearchParams {
   documentType: string;
@@ -24,24 +24,39 @@ export interface Document {
 export class DocumentService {
   private httpClientService = inject(HttpClientService);
 
-  searchIncomingDocuments(params: SearchParams) {
+  searchIncomingDocuments$(params: SearchParams) {
     return this.httpClientService.comonGet({
       url: `${environment.RESOURCE_URL}/incoming-documents/search`,
       params: params,
     });
   }
 
-  searchOutgoingDocuments(params: SearchParams) {
+  searchOutgoingDocuments$(params: SearchParams) {
     return this.httpClientService.comonGet({
       url: `${environment.RESOURCE_URL}/outgoing-documents/search`,
       params: params,
     });
   }
 
-  downloadAttachment(filename: string, documentType: string) {
+  downloadAttachment$(filename: string, documentType: string) {
     return this.httpClientService.comonGet({
-      url: `${environment.RESOURCE_URL}/${documentType === "incoming" ? "incoming-documents" : "outgoing-documents"}/attachments/${filename}`,
-      responseType: 'blob'
+      url: `${environment.RESOURCE_URL}/${
+        documentType === 'incoming'
+          ? 'incoming-documents'
+          : 'outgoing-documents'
+      }/attachments/${filename}`,
+      responseType: 'blob',
+    });
+  }
+
+  getIncomingDocument$() {
+    return this.httpClientService.comonGet({
+      url: `${environment.RESOURCE_URL}/incoming-documents`,
+    });
+  }
+  getOutcomingDocument$() {
+    return this.httpClientService.comonGet({
+      url: `${environment.RESOURCE_URL}/outgoing-documents`,
     });
   }
 }

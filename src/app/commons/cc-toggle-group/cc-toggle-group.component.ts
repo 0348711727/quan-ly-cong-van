@@ -4,8 +4,12 @@ import {
   input,
   InputSignal,
   output,
+  OutputEmitterRef,
 } from '@angular/core';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import {
+  MatButtonToggleChange,
+  MatButtonToggleModule,
+} from '@angular/material/button-toggle';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
 
 @Component({
@@ -18,9 +22,9 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
 export class CcToggleGroupComponent {
   readonly activeClass: InputSignal<boolean> = input<boolean>(false);
   listToggle: any = input([]);
-  value: InputSignal<any> = input('');
-  valueChange = output();
-  onChangeValue(event: any) {
+  value: InputSignal<string> = input('');
+  valueChange: OutputEmitterRef<string> = output();
+  onChangeValue(event: MatButtonToggleChange) {
     this.valueChange.emit(event.value);
   }
 }
