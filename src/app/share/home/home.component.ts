@@ -134,13 +134,27 @@ export class HomeComponent implements OnInit {
   allDocuments = signal<any[]>([]);
   
   // Computed signals for filtered data
-  waitingDocumentsAll = computed(() => 
-    this.allDocuments().filter(doc => doc.status === 'waiting')
-  );
+  waitingDocumentsAll = computed(() => {
+    const filtered = this.allDocuments().filter(doc => doc.status === 'waiting');
+    // Sắp xếp theo documentNumber tăng dần
+    return filtered.sort((a, b) => {
+      // Xử lý trường hợp documentNumber là chuỗi hoặc số
+      const numA = typeof a.documentNumber === 'string' ? parseInt(a.documentNumber.replace(/\D/g, '')) : a.documentNumber;
+      const numB = typeof b.documentNumber === 'string' ? parseInt(b.documentNumber.replace(/\D/g, '')) : b.documentNumber;
+      return numA - numB;
+    });
+  });
   
-  finishedDocumentsAll = computed(() => 
-    this.allDocuments().filter(doc => doc.status !== 'waiting')
-  );
+  finishedDocumentsAll = computed(() => {
+    const filtered = this.allDocuments().filter(doc => doc.status !== 'waiting');
+    // Sắp xếp theo documentNumber tăng dần
+    return filtered.sort((a, b) => {
+      // Xử lý trường hợp documentNumber là chuỗi hoặc số
+      const numA = typeof a.documentNumber === 'string' ? parseInt(a.documentNumber.replace(/\D/g, '')) : a.documentNumber;
+      const numB = typeof b.documentNumber === 'string' ? parseInt(b.documentNumber.replace(/\D/g, '')) : b.documentNumber;
+      return numA - numB;
+    });
+  });
 
   // Computed signals for paginated data
   waitingDocuments = computed(() => {
