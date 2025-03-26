@@ -120,7 +120,7 @@ export class SearchDocumentComponent implements OnInit {
   ];
 
   // Pagination properties
-  pageSize: WritableSignal<number> = signal(10);
+  pageSize: WritableSignal<number> = signal(2);
   pageSizeOptions: number[] = [2, 10, 25, 50];
   pageIndex: WritableSignal<number> = signal(0);
   totalItems: WritableSignal<number> = signal(0);
@@ -133,8 +133,6 @@ export class SearchDocumentComponent implements OnInit {
   @ViewChild('inputSummary') inputSummary!: CcInputComponent;
 
   ngOnInit() {
-    console.log('SearchDocumentComponent initialized');
-    // Thiết lập giá trị mặc định cho select
     if (this.selectDocumentType) {
       this.selectDocumentType.value = 'incoming';
     }

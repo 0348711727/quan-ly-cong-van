@@ -101,9 +101,11 @@
     <tr mat-row *matRowDef="let row; columns: waitingColumns()"></tr>
   </table>
   <mat-paginator
-    [length]="document().length"
-    [pageSize]="5"
+    [length]="totalItems()"
+    [pageSize]="pageSize()"
     [pageSizeOptions]="[5, 10, 25, 100]"
+    [pageIndex]="currentPage()"
+    (page)="handlePageEvent($event)"
     aria-label="Select page"
   >
   </mat-paginator>

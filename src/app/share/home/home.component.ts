@@ -7,9 +7,10 @@ import {
   viewChild,
   ViewChild,
   WritableSignal,
+  OnInit,
 } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
@@ -21,7 +22,7 @@ import {
 } from '../../commons/cc-dialog/cc-dialog.component';
 import { CcLoadingComponent } from '../../commons/cc-loading/cc-loading.component';
 import { CcToggleGroupComponent } from '../../commons/cc-toggle-group/cc-toggle-group.component';
-import { DocumentService } from '../../services/document.service';
+import { DocumentService, PaginationResponse } from '../../services/document.service';
 import { HttpClientService } from '../../services/http-client.service';
 
 @Component({
@@ -39,11 +40,11 @@ import { HttpClientService } from '../../services/http-client.service';
   styleUrl: './home.component.scss',
   providers: [MessageService],
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   protected httpClient: HttpClientService = inject(HttpClientService);
   protected messageService: MessageService = inject(MessageService);
   protected router: Router = inject(Router);
-  protected documentService: DocumentService = inject(DocumentService);
+  protected documentService = inject(DocumentService);
   protected dialog: MatDialog = inject(MatDialog);
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   value = signal('incomingDocuments');
@@ -86,16 +87,24 @@ export class HomeComponent {
   documentFinish = linkedSignal(() =>
     this.document().filter((doc: any) => doc.status !== 'waiting')
   );
+
+  // Pagination signals
+  currentPage = signal<number>(0); // 0-based for Material Paginator
+  pageSize = signal<number>(10);
+  totalItems = signal<number>(0);
+
   ngOnInit() {
-    this.getIncomingDocument();
+    this.loadDocuments();
   }
+
   addDocument() {
     this.router.navigateByUrl('add-document');
   }
+
   onChangeToggle(value: string): void {
     this.value.set(value);
     value === 'incomingDocuments'
-      ? this.getIncomingDocument()
+      ? this.loadDocuments()
       : this.getOutComingDocument();
   }
 
@@ -103,25 +112,36 @@ export class HomeComponent {
     this.router.navigateByUrl('search-document');
   }
 
-  getIncomingDocument() {
-    this.documentService.getIncomingDocument$().subscribe({
-      next: (data: any) => {
-        // this.messageService.add({
-        //   severity: 'success',
-        //   summary: 'Success',
-        //   detail: 'Get data success',
-        // });
-        this.document.set(data.document);
+  loadDocuments() {
+    const service = this.value() === 'incomingDocuments' 
+      ? this.documentService.getDocuments(this.currentPage() + 1, this.pageSize())
+      : this.documentService.getOutgoingDocuments(this.currentPage() + 1, this.pageSize());
+
+    service.subscribe({
+      next: (response: any) => {
+        if (response && response.data) {
+          const { documents, pagination } = response.data;
+          this.document.set(documents);
+          this.totalItems.set(pagination.totalItems);
+          this.pageSize.set(pagination.pageSize);
+          this.currentPage.set(pagination.currentPage - 1);
+        }
       },
+      error: (error: any) => {
+        console.error('Error loading documents:', error);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to load documents'
+        });
+      }
     });
   }
+
   getOutComingDocument() {
-    this.documentService.getOutcomingDocument$().subscribe({
-      next: (data: any) => {
-        this.document.set(data.document);
-      },
-    });
+    this.loadDocuments();
   }
+
   openDialog() {
     const data = {
       title: 'Chọn người chuyển',
@@ -133,5 +153,11 @@ export class HomeComponent {
     const dialog = this.dialog.open(CcDialogComponent, { data });
     // dialog.componentInstance.tempDialog = template;
     return dialog;
+  }
+
+  handlePageEvent(event: PageEvent) {
+    this.pageSize.set(event.pageSize);
+    this.currentPage.set(event.pageIndex);
+    this.loadDocuments();
   }
 }
