@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, WritableSignal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, WritableSignal, AfterViewChecked, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -100,7 +100,11 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
         <div class="text-center my-3">Không có dữ liệu</div>
       }
       <tr mat-header-row *matHeaderRowDef="columns"></tr>
-      <tr mat-row *matRowDef="let row; columns: columns;"></tr>
+      <tr mat-row 
+          *matRowDef="let row; columns: columns;" 
+          [ngClass]="{'highlight-row': row.id === recentlyFinishedDocId}"
+          [id]="'doc-' + row.id"
+      ></tr>
     </table>
     <mat-paginator
       [length]="totalItems"
@@ -111,15 +115,52 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
       aria-label="Select page"
     >
     </mat-paginator>
-  `
+  `,
+  styles: [`
+    .highlight-row {
+      background-color: #b3e5fc;
+      border-left: 4px solid #0288d1;
+      animation: pulseBackground 1.5s ease-in-out;
+      animation-iteration-count: 2;
+      animation-fill-mode: forwards;
+    }
+    
+    @keyframes pulseBackground {
+      0% { background-color: #b3e5fc; }
+      50% { background-color: #4fc3f7; }
+      100% { background-color: #b3e5fc; }
+    }
+  `]
 })
-export class FinishedDocumentComponent {
+export class FinishedDocumentComponent implements AfterViewChecked {
   @Input() finishedDocuments: any[] = [];
   @Input() columns: string[] = [];
   @Input() currentPage = 0;
   @Input() pageSize = 10;
   @Input() totalItems = 0;
+  @Input() recentlyFinishedDocId: string | null = null;
   
   @Output() pageChanged = new EventEmitter<PageEvent>();
   @Output() openDialog = new EventEmitter<void>();
+  
+  private previousFinishedDocId: string | null = null;
+  
+  ngAfterViewChecked() {
+    // Kiểm tra nếu ID vừa được thay đổi
+    if (this.recentlyFinishedDocId && this.recentlyFinishedDocId !== this.previousFinishedDocId) {
+      this.scrollToHighlightedRow();
+      this.previousFinishedDocId = this.recentlyFinishedDocId;
+    }
+  }
+  
+  scrollToHighlightedRow() {
+    if (this.recentlyFinishedDocId) {
+      setTimeout(() => {
+        const element = document.getElementById(`doc-${this.recentlyFinishedDocId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100); // Đợi một chút để đảm bảo DOM đã được cập nhật
+    }
+  }
 } 

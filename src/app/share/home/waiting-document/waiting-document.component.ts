@@ -84,7 +84,7 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
           <div class="d-flex flex-column">
             <a href="javascript:void(0)" class="text-primary mb-1" (click)="openDialog.emit()">Chuyển</a>
             <a href="javascript:void(0)" class="text-warning mb-1" (click)="$event.preventDefault()">Trả lại</a>
-            <a href="javascript:void(0)" class="text-danger" (click)="$event.preventDefault()">Kết thúc</a>
+            <a href="javascript:void(0)" class="text-danger" (click)="finishDocument.emit(element)">Kết thúc</a>
           </div>
         </td>
       </ng-container>
@@ -117,4 +117,5 @@ export class WaitingDocumentComponent {
   
   @Output() pageChanged = new EventEmitter<PageEvent>();
   @Output() openDialog = new EventEmitter<void>();
+  @Output() finishDocument = new EventEmitter<any>();
 } 

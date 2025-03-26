@@ -71,6 +71,7 @@ import { CommonModule } from '@angular/common';
         [totalItems]="waitingTotalItems()"
         (pageChanged)="handleWaitingPageEvent($event)"
         (openDialog)="openDialog()"
+        (finishDocument)="finishDocument($event)"
       ></app-waiting-document>
 
       <app-finished-document
@@ -79,6 +80,7 @@ import { CommonModule } from '@angular/common';
         [currentPage]="finishedCurrentPage()"
         [pageSize]="finishedPageSize()"
         [totalItems]="finishedTotalItems()"
+        [recentlyFinishedDocId]="recentlyFinishedDoc()"
         (pageChanged)="handleFinishedPageEvent($event)"
         (openDialog)="openDialog()"
       ></app-finished-document>
@@ -132,6 +134,9 @@ export class HomeComponent implements OnInit {
 
   // Shared data from API
   allDocuments = signal<any[]>([]);
+  
+  // Signal để theo dõi tài liệu vừa được kết thúc
+  recentlyFinishedDoc = signal<string | null>(null);
   
   // Computed signals for filtered data
   waitingDocumentsAll = computed(() => {
@@ -260,5 +265,58 @@ export class HomeComponent implements OnInit {
 
     const dialog = this.dialog.open(CcDialogComponent, { data });
     return dialog;
+  }
+
+  finishDocument(document: any) {
+    // Tìm tài liệu trong mảng allDocuments
+    const allDocs = this.allDocuments();
+    const docIndex = allDocs.findIndex(doc => doc.id === document.id);
+    
+    if (docIndex !== -1) {
+      // Thay đổi trạng thái từ "waiting" sang một giá trị khác (ví dụ: "finished")
+      const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
+      
+      // Cập nhật mảng allDocuments với tài liệu đã có trạng thái mới
+      const newAllDocs = [...allDocs];
+      newAllDocs[docIndex] = updatedDoc;
+      
+      // Gán lại mảng mới cho signal allDocuments
+      this.allDocuments.set(newAllDocs);
+      
+      // Lưu ID của tài liệu vừa được kết thúc
+      this.recentlyFinishedDoc.set(document.id);
+      
+      // Cập nhật tổng số tài liệu trong pagination
+      const waitingDocs = newAllDocs.filter(doc => doc.status === 'waiting');
+      const finishedDocs = newAllDocs.filter(doc => doc.status !== 'waiting');
+      this.waitingTotalItems.set(waitingDocs.length);
+      this.finishedTotalItems.set(finishedDocs.length);
+      
+      // Tìm tài liệu trong danh sách đã sắp xếp của finished
+      const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+        const numA = typeof a.documentNumber === 'string' ? parseInt(a.documentNumber.replace(/\D/g, '')) : a.documentNumber;
+        const numB = typeof b.documentNumber === 'string' ? parseInt(b.documentNumber.replace(/\D/g, '')) : b.documentNumber;
+        return numA - numB;
+      });
+      
+      // Tìm vị trí của tài liệu trong danh sách đã sắp xếp
+      const docPositionInSorted = sortedFinishedDocs.findIndex(doc => doc.id === document.id);
+      
+      // Tính toán trang chứa tài liệu dựa trên kích thước trang
+      if (docPositionInSorted !== -1) {
+        const targetPage = Math.floor(docPositionInSorted / this.finishedPageSize());
+        this.finishedCurrentPage.set(targetPage);
+      } else {
+        // Nếu không tìm thấy, mặc định về trang đầu tiên
+        this.finishedCurrentPage.set(0);
+      }
+      
+      // Hiển thị thông báo thành công
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Thành công',
+        detail: `Tài liệu số ${document.documentNumber} đã được kết thúc`
+      });
+    }
   }
 }
