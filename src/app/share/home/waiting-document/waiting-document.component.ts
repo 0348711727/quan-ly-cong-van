@@ -80,9 +80,12 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
         <th mat-header-cell *matHeaderCellDef>
           {{ "process" | translateAsync }}
         </th>
-        <td class="d-flex m-1" mat-cell *matCellDef="let element">
-          <cc-button (onClick)="openDialog.emit()">Chuyeenr</cc-button
-          ><cc-button>tra lai</cc-button><cc-button>ket thuc</cc-button>
+        <td mat-cell *matCellDef="let element">
+          <div class="d-flex flex-column">
+            <a href="javascript:void(0)" class="text-primary mb-1" (click)="openDialog.emit()">Chuyển</a>
+            <a href="javascript:void(0)" class="text-warning mb-1" (click)="$event.preventDefault()">Trả lại</a>
+            <a href="javascript:void(0)" class="text-danger" (click)="$event.preventDefault()">Kết thúc</a>
+          </div>
         </td>
       </ng-container>
 
