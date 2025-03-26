@@ -88,15 +88,6 @@
       </td>
     </ng-container>
 
-    <ng-container matColumnDef="processOperation">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "processOperation" | translateAsync }}
-      </th>
-      <td mat-cell *matCellDef="let element">
-        {{ element.processOperation }}
-      </td>
-    </ng-container>
-
     <tr mat-header-row *matHeaderRowDef="waitingColumns()"></tr>
     <tr mat-row *matRowDef="let row; columns: waitingColumns()"></tr>
   </table>
