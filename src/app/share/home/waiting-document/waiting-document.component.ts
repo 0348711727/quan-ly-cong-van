@@ -24,7 +24,7 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
     >
       <ng-container matColumnDef="stt">
         <th mat-header-cell *matHeaderCellDef>{{ "STT" }}</th>
-        <td mat-cell *matCellDef="let element; let i = index">{{ i + 1 }}</td>
+        <td mat-cell *matCellDef="let element; let i = index">{{ currentPage * pageSize + i + 1 }}</td>
       </ng-container>
 
       <ng-container matColumnDef="documentNumber">
