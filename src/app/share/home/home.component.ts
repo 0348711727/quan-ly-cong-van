@@ -268,55 +268,73 @@ export class HomeComponent implements OnInit {
   }
 
   finishDocument(document: any) {
-    // Tìm tài liệu trong mảng allDocuments
-    const allDocs = this.allDocuments();
-    const docIndex = allDocs.findIndex(doc => doc.id === document.id);
+    // Xác định loại tài liệu dựa trên toggle hiện tại
+    const isIncoming = this.value() === 'incomingDocuments';
     
-    if (docIndex !== -1) {
-      // Thay đổi trạng thái từ "waiting" sang một giá trị khác (ví dụ: "finished")
-      const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
-      
-      // Cập nhật mảng allDocuments với tài liệu đã có trạng thái mới
-      const newAllDocs = [...allDocs];
-      newAllDocs[docIndex] = updatedDoc;
-      
-      // Gán lại mảng mới cho signal allDocuments
-      this.allDocuments.set(newAllDocs);
-      
-      // Lưu ID của tài liệu vừa được kết thúc
-      this.recentlyFinishedDoc.set(document.id);
-      
-      // Cập nhật tổng số tài liệu trong pagination
-      const waitingDocs = newAllDocs.filter(doc => doc.status === 'waiting');
-      const finishedDocs = newAllDocs.filter(doc => doc.status !== 'waiting');
-      this.waitingTotalItems.set(waitingDocs.length);
-      this.finishedTotalItems.set(finishedDocs.length);
-      
-      // Tìm tài liệu trong danh sách đã sắp xếp của finished
-      const sortedFinishedDocs = finishedDocs.sort((a, b) => {
-        const numA = typeof a.documentNumber === 'string' ? parseInt(a.documentNumber.replace(/\D/g, '')) : a.documentNumber;
-        const numB = typeof b.documentNumber === 'string' ? parseInt(b.documentNumber.replace(/\D/g, '')) : b.documentNumber;
-        return numA - numB;
+    // Gọi API để cập nhật trạng thái
+    this.documentService.updateDocumentStatus(document.documentNumber, 'finished', isIncoming)
+      .subscribe({
+        next: (response: any) => {
+          // Nếu API thành công, cập nhật UI
+          // Tìm tài liệu trong mảng allDocuments
+          const allDocs = this.allDocuments();
+          const docIndex = allDocs.findIndex(doc => doc.id === document.id);
+          
+          if (docIndex !== -1) {
+            // Thay đổi trạng thái từ "waiting" sang "finished"
+            const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
+            
+            // Cập nhật mảng allDocuments với tài liệu đã có trạng thái mới
+            const newAllDocs = [...allDocs];
+            newAllDocs[docIndex] = updatedDoc;
+            
+            // Gán lại mảng mới cho signal allDocuments
+            this.allDocuments.set(newAllDocs);
+            
+            // Lưu ID của tài liệu vừa được kết thúc
+            this.recentlyFinishedDoc.set(document.id);
+            
+            // Cập nhật tổng số tài liệu trong pagination
+            const waitingDocs = newAllDocs.filter(doc => doc.status === 'waiting');
+            const finishedDocs = newAllDocs.filter(doc => doc.status !== 'waiting');
+            this.waitingTotalItems.set(waitingDocs.length);
+            this.finishedTotalItems.set(finishedDocs.length);
+            
+            // Tìm tài liệu trong danh sách đã sắp xếp của finished
+            const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+              const numA = typeof a.documentNumber === 'string' ? parseInt(a.documentNumber.replace(/\D/g, '')) : a.documentNumber;
+              const numB = typeof b.documentNumber === 'string' ? parseInt(b.documentNumber.replace(/\D/g, '')) : b.documentNumber;
+              return numA - numB;
+            });
+            
+            // Tìm vị trí của tài liệu trong danh sách đã sắp xếp
+            const docPositionInSorted = sortedFinishedDocs.findIndex(doc => doc.id === document.id);
+            
+            // Tính toán trang chứa tài liệu dựa trên kích thước trang
+            if (docPositionInSorted !== -1) {
+              const targetPage = Math.floor(docPositionInSorted / this.finishedPageSize());
+              this.finishedCurrentPage.set(targetPage);
+            } else {
+              // Nếu không tìm thấy, mặc định về trang đầu tiên
+              this.finishedCurrentPage.set(0);
+            }
+            
+            // Hiển thị thông báo thành công
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Thành công',
+              detail: `Tài liệu số ${document.documentNumber} đã được kết thúc`
+            });
+          }
+        },
+        error: (error) => {
+          console.error('Lỗi khi cập nhật trạng thái:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Lỗi',
+            detail: 'Không thể cập nhật trạng thái tài liệu. Vui lòng thử lại sau.'
+          });
+        }
       });
-      
-      // Tìm vị trí của tài liệu trong danh sách đã sắp xếp
-      const docPositionInSorted = sortedFinishedDocs.findIndex(doc => doc.id === document.id);
-      
-      // Tính toán trang chứa tài liệu dựa trên kích thước trang
-      if (docPositionInSorted !== -1) {
-        const targetPage = Math.floor(docPositionInSorted / this.finishedPageSize());
-        this.finishedCurrentPage.set(targetPage);
-      } else {
-        // Nếu không tìm thấy, mặc định về trang đầu tiên
-        this.finishedCurrentPage.set(0);
-      }
-      
-      // Hiển thị thông báo thành công
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Thành công',
-        detail: `Tài liệu số ${document.documentNumber} đã được kết thúc`
-      });
-    }
   }
 }
