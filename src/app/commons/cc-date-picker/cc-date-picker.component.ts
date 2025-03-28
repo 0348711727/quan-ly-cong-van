@@ -91,7 +91,7 @@ export class CcDatePickerComponent {
   // private readonly translation = inject(TranslateService);
   readonly checkFutureDate = input<boolean>(false);
 
-  model = input('', { transform: StringUtil.trimString });
+  value = input('', { transform: StringUtil.trimString });
 
   /**Initial value of the date input, only when it is uncontrolled. */
   readonly defaultValue = input<string | undefined>(undefined);
@@ -154,15 +154,15 @@ export class CcDatePickerComponent {
   public date: Signal<FormControl> = computed(
     () =>
       new FormControl(
-        { value: this.value(), disabled: this.disabled },
+        { value: this.valueFormat(), disabled: this.disabled },
         this.dateValidator(this.format())
       )
   );
-  private readonly value: Signal<Date | ''> = computed(() => {
-    if (!this.model()) {
+  private readonly valueFormat: Signal<Date | ''> = computed(() => {
+    if (!this.value()) {
       return '';
     }
-    return moment(this.model(), this.format(), true).toDate();
+    return moment(this.value(), this.format(), true).toDate();
   });
 
   public formatError: string = '';

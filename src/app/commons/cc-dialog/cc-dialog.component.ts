@@ -1,8 +1,8 @@
-import { NgClass } from '@angular/common';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   inject,
-  InputSignal,
+  Input,
   output,
   OutputEmitterRef,
   TemplateRef,
@@ -21,7 +21,12 @@ export enum TEMPLATE_TYPE {
 
 @Component({
   selector: 'cc-dialog',
-  imports: [MatDialogContent, NgClass, L10nTranslateAsyncPipe],
+  imports: [
+    MatDialogContent,
+    NgClass,
+    L10nTranslateAsyncPipe,
+    NgTemplateOutlet,
+  ],
   templateUrl: './cc-dialog.component.html',
   styleUrl: './cc-dialog.component.scss',
 })
@@ -33,7 +38,7 @@ export class CcDialogComponent {
 
   title: string = '';
   templateType: TEMPLATE_TYPE = TEMPLATE_TYPE.TABLE_VIEW;
-  tempDialog!: InputSignal<TemplateRef<any>>;
+  @Input() tempDialog!: TemplateRef<any>;
   readonly onCloseDialog: OutputEmitterRef<any> = output();
   ngOnInit(): void {
     this.title = this.data?.title || this.title;

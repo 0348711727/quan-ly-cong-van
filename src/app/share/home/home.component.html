@@ -18,177 +18,41 @@
     </div>
   </div>
 
-  <h2>Chờ xử lý</h2>
-  <table
-    mat-table
-    [dataSource]="documentWaiting()"
-    class="mat-elevation-z8 demo-table"
-  >
-    <ng-container matColumnDef="stt">
-      <th mat-header-cell *matHeaderCellDef>{{ "" }}</th>
-      <td mat-cell *matCellDef="let element">{{ element.position }}</td>
-    </ng-container>
+  <app-waiting-document
+    [waitingDocuments]="waitingDocuments()"
+    [columns]="waitingColumns()"
+    [currentPage]="waitingCurrentPage()"
+    [pageSize]="waitingPageSize()"
+    [totalItems]="waitingTotalItems()"
+    (pageChanged)="handleWaitingPageEvent($event)"
+    (openDialog)="openDialog()"
+    (finishDocument)="finishDocument($event)"
+  ></app-waiting-document>
 
-    <ng-container matColumnDef="documentNumber">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "documentNumber" | translateAsync }}
-      </th>
-      <td mat-cell *matCellDef="let element">{{ element.documentNumber }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="receivedDate">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "receivedDate" | translateAsync }}
-      </th>
-      <td mat-cell *matCellDef="let element">{{ element.receivedDate }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="documentInfomation">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "documentInfomation" | translateAsync }}
-      </th>
-      <td mat-cell *matCellDef="let element">{{ element.author }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="priority">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "priority" | translateAsync }}
-      </th>
-      <td mat-cell *matCellDef="let element">{{ element.priority }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="dueDate">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "dueDate" | translateAsync }}
-      </th>
-      <td mat-cell *matCellDef="let element">{{ element.dueDate }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="sender">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "sender" | translateAsync }}
-      </th>
-      <td mat-cell *matCellDef="let element">{{ element.sender }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="content">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "content" | translateAsync }}
-      </th>
-      <td mat-cell *matCellDef="let element">{{ element.content }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="process">
-      <th mat-header-cell *matHeaderCellDef>
-        {{ "process" | translateAsync }}
-      </th>
-      <td class="d-flex m-1" mat-cell *matCellDef="let element">
-        <cc-button (onClick)="openDialog()">Chuyeenr</cc-button
-        ><cc-button>tra lai</cc-button><cc-button>ket thuc</cc-button>
-      </td>
-    </ng-container>
-
-    <tr mat-header-row *matHeaderRowDef="waitingColumns()"></tr>
-    <tr mat-row *matRowDef="let row; columns: waitingColumns()"></tr>
-  </table>
-  <mat-paginator
-    [length]="totalItems()"
-    [pageSize]="pageSize()"
-    [pageSizeOptions]="[5, 10, 25, 100]"
-    [pageIndex]="currentPage()"
-    (page)="handlePageEvent($event)"
-    aria-label="Select page"
-  >
-  </mat-paginator>
-
-  <div>
-    <h2>Đã xử lý</h2>
-    <table
-      mat-table
-      [dataSource]="documentFinish()"
-      class="mat-elevation-z8 demo-table"
-    >
-      <ng-container matColumnDef="stt">
-        <th mat-header-cell *matHeaderCellDef>{{ "" }}</th>
-        <td mat-cell *matCellDef="let element">{{ element.position }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="documentNumber">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "documentNumber" | translateAsync }}
-        </th>
-        <td mat-cell *matCellDef="let element">{{ element.documentNumber }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="receivedDate">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "receivedDate" | translateAsync }}
-        </th>
-        <td mat-cell *matCellDef="let element">{{ element.receivedDate }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="documentInfomation">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "documentInfomation" | translateAsync }}
-        </th>
-        <td mat-cell *matCellDef="let element">{{ element.author }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="priority">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "priority" | translateAsync }}
-        </th>
-        <td mat-cell *matCellDef="let element">{{ element.priority }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="dueDate">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "dueDate" | translateAsync }}
-        </th>
-        <td mat-cell *matCellDef="let element">{{ element.dueDate }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="sender">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "sender" | translateAsync }}
-        </th>
-        <td mat-cell *matCellDef="let element">{{ element.sender }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="content">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "content" | translateAsync }}
-        </th>
-        <td mat-cell *matCellDef="let element">{{ element.content }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="process">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "process" | translateAsync }}
-        </th>
-        <td class="d-flex m-1" mat-cell *matCellDef="let element">
-          <cc-button (onClick)="openDialog()">Chuyen bo sung</cc-button>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="internalRecieve">
-        <th mat-header-cell *matHeaderCellDef>
-          {{ "internalRecieve" | translateAsync }}
-        </th>
-        <td mat-cell *matCellDef="let element">
-          {{ element.internalRecieve }}
-        </td>
-      </ng-container>
-
-      @if(documentFinish().length === 0) {
-      <span>No data available</span>
-      }
-      <tr mat-header-row *matHeaderRowDef="finnishColumns()"></tr>
-      <tr mat-row *matRowDef="let row; columns: finnishColumns()"></tr>
-    </table>
-  </div>
+  <app-finished-document
+    [finishedDocuments]="finishedDocuments()"
+    [columns]="finnishColumns()"
+    [currentPage]="finishedCurrentPage()"
+    [pageSize]="finishedPageSize()"
+    [totalItems]="finishedTotalItems()"
+    [recentlyFinishedDocId]="recentlyFinishedDoc()"
+    (pageChanged)="handleFinishedPageEvent($event)"
+    (openDialog)="openDialog()"
+  ></app-finished-document>
 </div>
 
 @if(this.httpClient.loading()) {
 <cc-loading></cc-loading>
 }
+<ng-template #chuyen>
+  <cc-radio-group
+    (onChange)="onChange($event)"
+    [options]="[
+      { label: MOVE_CV.CBQL },
+      { label: MOVE_CV.GIAO_VIEN },
+      { label: MOVE_CV.NHAN_VIEN }
+    ]"
+  ></cc-radio-group>
+
+  <cc-button (onClick)="confirmMove()">Xác nhận</cc-button>
+</ng-template>
