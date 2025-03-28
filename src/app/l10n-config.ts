@@ -51,11 +51,10 @@ export class TranslationLoader implements L10nTranslationLoader {
      * Translation files are lazy-loaded via dynamic import and will be split into separate chunks during build.
      * Assets names and keys must be valid variable names
      */
-    const userLanguage = 'vi';
-    // const userLanguage = getUserLanguage();
+    // const userLanguage = 'vi';
+    const userLanguage = getUserLanguage();
     const data = import(`./i18n/${userLanguage}/${provider.asset}.json`);
     // console.log(data.then((ui) => console.log(ui)));
-    // return from(data);
     return from(data);
   }
 }

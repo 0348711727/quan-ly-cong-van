@@ -52,7 +52,11 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
         <th mat-header-cell *matHeaderCellDef>
           {{ "priority" | translateAsync }}
         </th>
-        <td mat-cell *matCellDef="let element">{{ element.priority }}</td>
+        <td mat-cell *matCellDef="let element">
+          <span [ngClass]="{'text-danger': element.priority === 'urgent', 'text-secondary': !element.priority || (element.priority !== 'normal' && element.priority !== 'urgent')}">
+            {{ (element.priority === 'normal' || element.priority === 'urgent') ? ('priority_' + element.priority | translateAsync) : (element.priority || '-') }}
+          </span>
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="dueDate">
@@ -66,14 +70,14 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
         <th mat-header-cell *matHeaderCellDef>
           {{ "sender" | translateAsync }}
         </th>
-        <td mat-cell *matCellDef="let element">{{ element.sender }}</td>
+        <td mat-cell *matCellDef="let element">{{ element.author }}</td>
       </ng-container>
 
       <ng-container matColumnDef="content">
         <th mat-header-cell *matHeaderCellDef>
           {{ "content" | translateAsync }}
         </th>
-        <td mat-cell *matCellDef="let element">{{ element.content }}</td>
+        <td mat-cell *matCellDef="let element">{{ element.summary }}</td>
       </ng-container>
 
       <ng-container matColumnDef="process">

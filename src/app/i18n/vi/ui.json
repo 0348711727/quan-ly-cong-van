@@ -22,5 +22,7 @@
   "incomingDocuments": "Công văn đến",
   "outcomingDocuments": "Công văn đi",
   "dateRelease": "Ngày phát hành văn bản",
-  "internalRecieve": "Nơi nhận nội bộ"
+  "internalRecieve": "Nơi nhận nội bộ",
+  "priority_normal": "Thường",
+  "priority_urgent": "Khẩn"
 }
