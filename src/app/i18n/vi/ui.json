@@ -22,7 +22,15 @@
   "incomingDocuments": "Công văn đến",
   "outcomingDocuments": "Công văn đi",
   "dateRelease": "Ngày phát hành văn bản",
-  "internalRecieve": "Nơi nhận nội bộ",
+  "internalRecipient": "Nơi nhận nội bộ",
   "priority_normal": "Thường",
-  "priority_urgent": "Khẩn"
+  "priority_urgent": "Khẩn",
+  "paginatorFirstPage": "Trang đầu",
+  "paginatorItemsPerPage": "Số mục mỗi trang:",
+  "paginatorLastPage": "Trang cuối",
+  "paginatorNextPage": "Trang tiếp",
+  "paginatorPreviousPage": "Trang trước",
+  "paginatorOf": "của",
+  "paginatorNoResults": "Không có kết quả",
+  "search": "Tìm kiếm"
 }

@@ -25,19 +25,19 @@
     [pageSize]="waitingPageSize()"
     [totalItems]="waitingTotalItems()"
     (pageChanged)="handleWaitingPageEvent($event)"
-    (openDialog)="openDialog()"
+    (openDialog)="openDialog($event)"
     (finishDocument)="finishDocument($event)"
   ></app-waiting-document>
 
   <app-finished-document
     [finishedDocuments]="finishedDocuments()"
-    [columns]="finnishColumns()"
+    [columns]="finishedColumns()"
     [currentPage]="finishedCurrentPage()"
     [pageSize]="finishedPageSize()"
     [totalItems]="finishedTotalItems()"
     [recentlyFinishedDocId]="recentlyFinishedDoc()"
     (pageChanged)="handleFinishedPageEvent($event)"
-    (openDialog)="openDialog()"
+    (openDialog)="openDialog($event)"
   ></app-finished-document>
 </div>
 
@@ -45,14 +45,19 @@
 <cc-loading></cc-loading>
 }
 <ng-template #chuyen>
-  <cc-radio-group
-    (onChange)="onChange($event)"
-    [options]="[
-      { label: MOVE_CV.CBQL },
-      { label: MOVE_CV.GIAO_VIEN },
-      { label: MOVE_CV.NHAN_VIEN }
-    ]"
-  ></cc-radio-group>
+  <div class="dialog-content-wrapper">
+    <cc-radio-group
+      (onChange)="onChange($event)"
+      [value]="selectedOption()"
+      [options]="[
+        { label: MOVE_CV.CBQL, value: 'management-staff' },
+        { label: MOVE_CV.GIAO_VIEN, value: 'teacher' },
+        { label: MOVE_CV.NHAN_VIEN, value: 'staff' }
+      ]"
+    ></cc-radio-group>
 
-  <cc-button (onClick)="confirmMove()">Xác nhận</cc-button>
+    <div class="text-center mt-4">
+      <cc-button (onClick)="confirmMove()">Xác nhận</cc-button>
+    </div>
+  </div>
 </ng-template>

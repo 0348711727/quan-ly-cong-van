@@ -9,6 +9,7 @@ import {
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
+import { RecipientLabelPipe } from '../../../share/pipes/recipient-label.pipe';
 
 @Component({
   selector: 'app-finished-document',
@@ -18,6 +19,7 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
     MatTableModule,
     MatPaginatorModule,
     L10nTranslateAsyncPipe,
+    RecipientLabelPipe,
   ],
   templateUrl: './finished-document.component.html',
   styles: [
@@ -40,6 +42,10 @@ import { L10nTranslateAsyncPipe } from 'angular-l10n';
         100% {
           background-color: #b3e5fc;
         }
+      }
+
+      .text-success {
+        color: #28a745 !important;
       }
     `,
   ],

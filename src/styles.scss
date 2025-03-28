@@ -96,3 +96,43 @@ a {
     color: #ea8025;
   }
 }
+
+/* Add global styles for dialog */
+.mat-mdc-dialog-container .mdc-dialog__title {
+  padding: 0 !important;
+}
+
+.mat-mdc-dialog-container .dialog-content-wrapper {
+  padding: 1rem;
+  min-width: 300px;
+}
+
+.mat-mdc-dialog-container .text-center {
+  text-align: center;
+}
+
+.mat-mdc-dialog-container .mt-4 {
+  margin-top: 1.5rem;
+}
+
+/* Global styling for RadioGroup in dialogs */
+.mat-mdc-dialog-container .mat-mdc-radio-button {
+  margin-right: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Ensure vertical centering for dialog titles */
+.mat-mdc-dialog-container .dialog-title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50px;
+}
+
+.mat-mdc-dialog-container .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;
+  height: 100%;
+}

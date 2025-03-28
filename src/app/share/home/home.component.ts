@@ -75,7 +75,7 @@ export class HomeComponent implements OnInit {
     'process',
   ]);
 
-  finnishColumns: WritableSignal<string[]> = signal([
+  finishedColumns: WritableSignal<string[]> = signal([
     'stt',
     'documentNumber',
     'receivedDate',
@@ -85,6 +85,7 @@ export class HomeComponent implements OnInit {
     'sender',
     'content',
     'process',
+    'internalRecipient',
   ]);
 
   // Shared data from API
@@ -92,6 +93,12 @@ export class HomeComponent implements OnInit {
 
   // Signal để theo dõi tài liệu vừa được kết thúc
   recentlyFinishedDoc = signal<string | null>(null);
+
+  // Thêm selectedOption để lưu trữ lựa chọn hiện tại
+  selectedOption = signal<string>('management-staff'); // Mặc định là giá trị của CBQL
+
+  // Thêm biến lưu trữ document đang được xử lý
+  selectedDocument = signal<any>(null);
 
   // Computed signals for filtered data
   waitingDocumentsAll = computed(() => {
@@ -164,12 +171,13 @@ export class HomeComponent implements OnInit {
   }
 
   onChangeToggle(value: string): void {
+    console.log("on change")
     this.value.set(value);
     // Reset pagination
     this.waitingCurrentPage.set(0);
-    this.waitingPageSize.set(10);
+    this.waitingPageSize.set(3);
     this.finishedCurrentPage.set(0);
-    this.finishedPageSize.set(10);
+    this.finishedPageSize.set(3);
 
     // Reload data
     this.loadAllDocuments();
@@ -233,7 +241,12 @@ export class HomeComponent implements OnInit {
     // No need to call API again as we're using computed properties for pagination
   }
 
-  openDialog() {
+  openDialog(document: any) {
+    // Reset về giá trị mặc định là management-staff (CBQL) trước khi mở dialog
+    this.selectedOption.set('management-staff');
+    // Lưu document đang được xử lý
+    this.selectedDocument.set(document);
+    
     const data = {
       title: 'Chọn người chuyển',
       templateType: TEMPLATE_TYPE.LITE,
@@ -330,12 +343,122 @@ export class HomeComponent implements OnInit {
       });
   }
   onChange(event: string) {
-    console.log(event);
+    console.log('Đã chọn giá trị: ', event);
+    this.selectedOption.set(event);
   }
   confirmMove() {
     /* 
       Call patch api 
     */
-    this.dialog.closeAll();
+    const selectedValue = this.selectedOption();
+    console.log('Giá trị đã chọn khi xác nhận:', selectedValue);
+    
+    const document = this.selectedDocument();
+    console.log(document, 999);
+    if (!document) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Lỗi',
+        detail: 'Không tìm thấy tài liệu để cập nhật',
+      });
+      this.dialog.closeAll();
+      return;
+    }
+    
+    console.log(`Cập nhật tài liệu số: ${document.documentNumber}`);
+    
+    // Xác định loại tài liệu dựa trên toggle hiện tại
+    const isIncoming = this.value() === 'incomingDocuments';
+    
+    // Gọi API để cập nhật trạng thái và người nhận nội bộ
+    this.documentService
+      .updateDocument(document.documentNumber, {
+        status: 'finished',
+        internalRecipient: selectedValue
+      }, isIncoming)
+      .subscribe({
+        next: (response: any) => {
+          // Xử lý khi API thành công
+          
+          // Cập nhật UI tương tự như trong finishDocument
+          const allDocs = this.allDocuments();
+          const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
+
+          if (docIndex !== -1) {
+            // Thay đổi trạng thái từ "waiting" sang "finished"
+            const updatedDoc = { 
+              ...allDocs[docIndex], 
+              status: 'finished',
+              internalRecipient: selectedValue
+            };
+
+            // Cập nhật mảng allDocuments với tài liệu đã có trạng thái mới
+            const newAllDocs = [...allDocs];
+            newAllDocs[docIndex] = updatedDoc;
+
+            // Gán lại mảng mới cho signal allDocuments
+            this.allDocuments.set(newAllDocs);
+
+            // Lưu ID của tài liệu vừa được chuyển để highlight
+            this.recentlyFinishedDoc.set(document.id);
+
+            // Cập nhật tổng số tài liệu trong pagination
+            const waitingDocs = newAllDocs.filter(
+              (doc) => doc.status === 'waiting'
+            );
+            const finishedDocs = newAllDocs.filter(
+              (doc) => doc.status !== 'waiting'
+            );
+            this.waitingTotalItems.set(waitingDocs.length);
+            this.finishedTotalItems.set(finishedDocs.length);
+
+            // Tìm tài liệu trong danh sách đã sắp xếp của finished
+            const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+              const numA =
+                typeof a.documentNumber === 'string'
+                  ? parseInt(a.documentNumber.replace(/\D/g, ''))
+                  : a.documentNumber;
+              const numB =
+                typeof b.documentNumber === 'string'
+                  ? parseInt(b.documentNumber.replace(/\D/g, ''))
+                  : b.documentNumber;
+              return numA - numB;
+            });
+
+            // Tìm vị trí của tài liệu trong danh sách đã sắp xếp
+            const docPositionInSorted = sortedFinishedDocs.findIndex(
+              (doc) => doc.id === document.id
+            );
+
+            // Tính toán trang chứa tài liệu dựa trên kích thước trang
+            if (docPositionInSorted !== -1) {
+              const targetPage = Math.floor(
+                docPositionInSorted / this.finishedPageSize()
+              );
+              this.finishedCurrentPage.set(targetPage);
+            } else {
+              // Nếu không tìm thấy, mặc định về trang đầu tiên
+              this.finishedCurrentPage.set(0);
+            }
+          }
+          
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Thành công',
+            detail: `Đã cập nhật tài liệu số ${document.documentNumber}`,
+          });
+        },
+        error: (error: any) => {
+          console.error('Lỗi khi cập nhật tài liệu:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Lỗi',
+            detail: 'Không thể cập nhật tài liệu. Vui lòng thử lại sau.',
+          });
+        },
+        complete: () => {
+          this.dialog.closeAll();
+        }
+      });
   }
 }

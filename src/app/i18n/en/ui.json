@@ -25,5 +25,13 @@
   "incomingDocuments": "Incoming Documents",
   "outcomingDocuments": "Outgoing Documents",
   "dateRelease": "Release Date",
-  "internalRecieve": "Internal Recipient"
+  "internalRecipient": "Internal Recipient",
+  "paginatorFirstPage": "First page",
+  "paginatorItemsPerPage": "Items per page:",
+  "paginatorLastPage": "Last page",
+  "paginatorNextPage": "Next page",
+  "paginatorPreviousPage": "Previous page",
+  "paginatorOf": "of",
+  "paginatorNoResults": "No results",
+  "search": "Search"
 }

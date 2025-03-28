@@ -101,4 +101,14 @@ export class DocumentService {
       body: { status }
     });
   }
+
+  updateDocument(documentNumber: string, updateData: any, isIncoming: boolean = true) {
+    const documentType = isIncoming ? 'incoming-documents' : 'outgoing-documents';
+    return this.httpClientService.commonPatch({
+      url: `${environment.RESOURCE_URL}/${documentType}/${documentNumber}`,
+      headers: {},
+      params: {},
+      body: updateData
+    });
+  }
 }

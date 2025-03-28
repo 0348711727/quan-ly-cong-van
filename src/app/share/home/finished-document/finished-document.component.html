@@ -84,19 +84,19 @@
         <a
           href="javascript:void(0)"
           class="text-success"
-          (click)="openDialog.emit()"
+          style="pointer-events: none;"
           >Chuyển bổ sung</a
         >
       </div>
     </td>
   </ng-container>
 
-  <ng-container matColumnDef="internalRecieve">
+  <ng-container matColumnDef="internalRecipient">
     <th mat-header-cell *matHeaderCellDef>
-      {{ "internalRecieve" | translateAsync }}
+      {{ "internalRecipient" | translateAsync }}
     </th>
     <td mat-cell *matCellDef="let element">
-      {{ element.internalRecieve }}
+      {{ element.internalRecipient | recipientLabel }}
     </td>
   </ng-container>
 

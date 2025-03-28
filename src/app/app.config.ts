@@ -10,6 +10,8 @@ import { provideServiceWorker } from '@angular/service-worker';
 import { provideL10nTranslation } from 'angular-l10n';
 import { routes } from './app.routes';
 import { l10nConfig, TranslationLoader } from './l10n-config';
+import { MatPaginatorIntl } from '@angular/material/paginator';
+import { CustomPaginatorIntl } from './services/custom-paginator-intl.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -24,5 +26,9 @@ export const appConfig: ApplicationConfig = {
       translationLoader: TranslationLoader,
     }),
     provideHttpClient(),
+    {
+      provide: MatPaginatorIntl,
+      useClass: CustomPaginatorIntl,
+    }
   ],
 };
