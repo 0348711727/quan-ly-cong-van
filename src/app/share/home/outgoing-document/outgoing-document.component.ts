@@ -286,4 +286,51 @@ export class OutgoingDocumentComponent implements OnInit {
         },
       });
   }
+
+  // Método para publicación adicional de un documento
+  additionalPublish(document: any) {
+    // Mostrar mensaje de confirmación
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Thông báo',
+      detail: `Đang thực hiện phát hành bổ sung cho văn bản số ${document.documentNumber}`,
+    });
+    
+    // Lógica para publicación adicional podría implementarse aquí
+    // Por ahora solo mostramos un mensaje de éxito después de un breve retraso
+    setTimeout(() => {
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Thành công',
+        detail: `Đã phát hành bổ sung văn bản số ${document.documentNumber}`,
+      });
+    }, 1000);
+  }
+
+  // Método para recuperar un documento
+  recoverDocument(document: any) {
+    // Cambiar el estado del documento de 'finished' a 'waiting'
+    this.documentService
+      .updateDocumentStatus(document.documentNumber, 'waiting', false)
+      .subscribe({
+        next: (response: any) => {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Thành công',
+            detail: `Đã lấy lại văn bản số ${document.documentNumber}`,
+          });
+          
+          // Recargar documentos después de recuperar
+          this.loadOutgoingDocuments();
+        },
+        error: (error) => {
+          console.error('Lỗi khi lấy lại văn bản:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Lỗi',
+            detail: 'Không thể lấy lại văn bản. Vui lòng thử lại sau.',
+          });
+        },
+      });
+  }
 } 

@@ -149,9 +149,15 @@
         <div class="d-flex flex-column">
           <a
             href="javascript:void(0)"
-            class="text-success"
-            style="pointer-events: none;"
-            >Đã phát hành</a
+            class="text-primary mb-1"
+            (click)="additionalPublish(element)"
+            >Phát hành bổ sung</a
+          >
+          <a
+            href="javascript:void(0)"
+            class="text-warning mb-1"
+            (click)="recoverDocument(element)"
+            >Lấy lại văn bản</a
           >
         </div>
       </td>
