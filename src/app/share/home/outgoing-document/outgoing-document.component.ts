@@ -261,20 +261,87 @@ export class OutgoingDocumentComponent implements OnInit {
       });
   }
 
-  // Nuevo método para publicar documento
+  // Método para publicar documento
   publishDocument(document: any) {
+    console.log(`Publicando documento ${document.documentNumber}...`);
+    
+    // Actualizar estado en el servidor
     this.documentService
-      .updateDocumentStatus(document.documentNumber, 'published', false)
+      .updateDocumentStatus(document.documentNumber, 'finished', false)
       .subscribe({
         next: (response: any) => {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Thành công',
-            detail: `Đã phát hành văn bản số ${document.documentNumber}`,
-          });
+          console.log('Respuesta del servidor:', response);
           
-          // Recargar documentos después de publicar
-          this.loadOutgoingDocuments();
+          // Una vez actualizado en el servidor, procedemos a actualizar la UI
+          const allDocs = this.allDocuments();
+          const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
+
+          if (docIndex !== -1) {
+            // Cambiar el estado de "waiting" a "finished"
+            const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
+
+            // Actualizar el array allDocuments con el documento modificado
+            const newAllDocs = [...allDocs];
+            newAllDocs[docIndex] = updatedDoc;
+
+            // Asignar el nuevo array al signal allDocuments
+            this.allDocuments.set(newAllDocs);
+
+            // Guardar el ID del documento recién publicado para resaltarlo
+            this.recentlyFinishedDoc.set(document.id);
+
+            // Actualizar el total de elementos en pagination
+            const waitingDocs = newAllDocs.filter(
+              (doc) => doc.status === 'waiting'
+            );
+            const finishedDocs = newAllDocs.filter(
+              (doc) => doc.status !== 'waiting'
+            );
+            this.waitingTotalItems.set(waitingDocs.length);
+            this.finishedTotalItems.set(finishedDocs.length);
+
+            // Encontrar el documento en la lista ordenada de documentos finalizados
+            const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+              const numA =
+                typeof a.documentNumber === 'string'
+                  ? parseInt(a.documentNumber.replace(/\D/g, ''))
+                  : a.documentNumber;
+              const numB =
+                typeof b.documentNumber === 'string'
+                  ? parseInt(b.documentNumber.replace(/\D/g, ''))
+                  : b.documentNumber;
+              return numA - numB;
+            });
+
+            // Encontrar la posición del documento en la lista ordenada
+            const docPositionInSorted = sortedFinishedDocs.findIndex(
+              (doc) => doc.id === document.id
+            );
+
+            // Calcular la página que contiene el documento según el tamaño de página
+            if (docPositionInSorted !== -1) {
+              const targetPage = Math.floor(
+                docPositionInSorted / this.finishedPageSize()
+              );
+              this.finishedCurrentPage.set(targetPage);
+            }
+
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Thành công',
+              detail: `Đã phát hành văn bản số ${document.documentNumber}`,
+            });
+          } else {
+            // Si no encontramos el documento en nuestro estado local, recargamos todos los documentos
+            console.log('Documento no encontrado en estado local, recargando...');
+            this.loadOutgoingDocuments();
+            
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Thành công',
+              detail: `Đã phát hành văn bản số ${document.documentNumber}`,
+            });
+          }
         },
         error: (error) => {
           console.error('Lỗi khi phát hành văn bản:', error);
@@ -283,7 +350,7 @@ export class OutgoingDocumentComponent implements OnInit {
             summary: 'Lỗi',
             detail: 'Không thể phát hành văn bản. Vui lòng thử lại sau.',
           });
-        },
+        }
       });
   }
 
