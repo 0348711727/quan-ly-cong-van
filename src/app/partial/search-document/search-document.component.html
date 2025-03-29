@@ -80,10 +80,6 @@
     <h3>Bảng hiển thị kết quả tìm kiếm</h3>
     
     <div class="table-container">
-      <div class="loading-shade" *ngIf="loading()">
-        <mat-spinner diameter="40"></mat-spinner>
-      </div>
-      
       <table mat-table [dataSource]="documents()" class="mat-elevation-z8 demo-table">
         <!-- Cột STT -->
         <ng-container matColumnDef="stt">

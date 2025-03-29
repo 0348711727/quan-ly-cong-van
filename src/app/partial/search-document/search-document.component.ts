@@ -327,15 +327,22 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
 
   onChangeSearch() {
     try {
+      console.log('Search button clicked');
       this.loading.set(true);
+      
       // Reset pagination when performing a new search
       this.pageIndex.set(0);
+      
+      // Ensure we're inside NgZone for proper change detection
       this.search(this.searchParams());
     } catch (error) {
       console.error('Error in onChangeSearch:', error);
       this.loading.set(false);
       this.hasSearched = true;
       this.documents.set([]);
+      
+      // Force change detection if there's an error
+      this.cdr.detectChanges();
     }
   }
 
@@ -345,6 +352,9 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       page: this.pageIndex() + 1,
       pageSize: this.pageSize(),
     };
+    
+    // Make sure UI reflects the cleared state before new results arrive
+    this.cdr.detectChanges();
 
     this.handleSearch(searchParams);
   }
@@ -353,48 +363,97 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     searchParams: any,
     searchFunction: (params: any) => Observable<any>
   ) {
+    this.loading.set(true);
+    
+    // Force change detection to show loading state
+    this.cdr.detectChanges();
+    
     searchFunction(searchParams).subscribe({
       next: (response: any) => {
-        const {
-          data: { documents, pagination },
-        } = response as SearchDataResponse;
-
-        // Update pagination information
-        this.totalItems.set(pagination.totalItems);
-
+        console.log('Search response received:', response);
         
-        // Verify the structure of received documents 
-        this.debugDocumentStructure(documents);
-        
-        // Keep dates as strings for display, but add additional properties for sorting
-        const docs = (documents as SearchResultDocument[]).map((doc) => {
-          // Create a copy of the document
-          const docCopy = { ...doc };
+        try {
+          const {
+            data: { documents, pagination },
+          } = response as SearchDataResponse;
+
+          // Update pagination information
+          this.totalItems.set(pagination.totalItems);
           
-          // Create a Date object only for sorting (not for display)
-          docCopy.issuedDateObj = this.formatDate(doc.issuedDate);
+          // Verify the structure of received documents 
+          this.debugDocumentStructure(documents);
           
-          return docCopy;
-        });
-        
-        this.documents.set(docs);
+          if (!documents || documents.length === 0) {
+            console.log('No documents found in search results');
+            this.documents.set([]);
+            this.results.set([]); // Sync both result arrays
+            this.hasSearched = true;
+            this.loading.set(false);
+            
+            // Force change detection after getting empty results
+            this.cdr.detectChanges();
+            return;
+          }
+          
+          console.log(`Found ${documents.length} documents in search results`);
+          
+          // Keep dates as strings for display, but add additional properties for sorting
+          const docs = (documents as SearchResultDocument[]).map((doc) => {
+            // Create a copy of the document
+            const docCopy = { ...doc };
+            
+            // Create a Date object only for sorting (not for display)
+            docCopy.issuedDateObj = this.formatDate(doc.issuedDate);
+            
+            return docCopy;
+          });
+          
+          // Update both result arrays to ensure consistency
+          this.documents.set(docs);
+          this.results.set(docs); // Sync the results signal as well
+          
+          console.log('Documents after processing:', this.documents());
 
-        // Sort documents by issuedDate
-        this.sortDocumentsByIssuedDate();
-
-        this.hasSearched = true;
-        this.loading.set(false);
+          // Sort documents by issuedDate
+          this.sortDocumentsByIssuedDate();
+          
+          // Make sure to set loading to false before change detection
+          this.loading.set(false);
+          
+          // Ensure change detection happens when we have the final results
+          this.cdr.detectChanges();
+        } catch (error) {
+          console.error('Error processing search results:', error);
+          this.documents.set([]);
+          this.results.set([]);
+          this.loading.set(false);
+          
+          // Force change detection in case of error
+          this.cdr.detectChanges();
+        } finally {
+          this.hasSearched = true;
+          this.loading.set(false);
+          
+          // Final change detection to ensure UI is consistent with state
+          this.cdr.detectChanges();
+        }
       },
       error: (err: any) => {
         console.error('Error searching documents:', err);
         this.documents.set([]);
+        this.results.set([]); // Sync both result arrays
         this.hasSearched = true;
         this.loading.set(false);
+        
+        // Force change detection after error
+        this.cdr.detectChanges();
       },
     });
   }
 
   public handleSearch(searchParams: any) {
+    console.log('Handling search for document type:', searchParams.documentType);
+    
     if (searchParams.documentType === 'incoming') {
       this.searchDocuments(
         searchParams,
@@ -405,6 +464,9 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
         searchParams,
         this.documentService.searchOutgoingDocuments$.bind(this.documentService)
       );
+    } else {
+      console.warn('Unknown document type:', searchParams.documentType);
+      this.loading.set(false);
     }
   }
 
@@ -412,6 +474,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    * Handle page change events from the paginator
    */
   onPageChange(event: PageEvent) {
+    console.log("onPageChange", event);
     this.pageSize.set(event.pageSize);
     this.pageIndex.set(event.pageIndex);
 
@@ -425,28 +488,33 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    */
   sortDocumentsByIssuedDate() {
     try {
-      this.documents.set(
-        [...this.documents()].sort((a: any, b: any) => {
-          // Handle case where one of the two documents has no issue date
-          if (!a.issuedDateObj) return 1; // Push documents without dates to the end
-          if (!b.issuedDateObj) return -1;
+      const sortedDocs = [...this.documents()].sort((a: any, b: any) => {
+        // Handle case where one of the two documents has no issue date
+        if (!a.issuedDateObj) return 1; // Push documents without dates to the end
+        if (!b.issuedDateObj) return -1;
 
-          // Compare two dates using Date objects
-          try {
-            const dateA = a.issuedDateObj?.getTime() || 0;
-            const dateB = b.issuedDateObj?.getTime() || 0;
+        // Compare two dates using Date objects
+        try {
+          const dateA = a.issuedDateObj?.getTime() || 0;
+          const dateB = b.issuedDateObj?.getTime() || 0;
 
-            if (isNaN(dateA) && isNaN(dateB)) return 0;
-            if (isNaN(dateA)) return 1;
-            if (isNaN(dateB)) return -1;
+          if (isNaN(dateA) && isNaN(dateB)) return 0;
+          if (isNaN(dateA)) return 1;
+          if (isNaN(dateB)) return -1;
 
-            return dateA - dateB; // Sort in ascending order
-          } catch (e) {
-            console.error('Error comparing dates:', e);
-            return 0;
-          }
-        })
-      );
+          return dateA - dateB; // Sort in ascending order
+        } catch (e) {
+          console.error('Error comparing dates:', e);
+          return 0;
+        }
+      });
+      
+      console.log('Sorted documents:', sortedDocs);
+      this.documents.set(sortedDocs);
+      this.results.set(sortedDocs); // Also update results signal for consistency
+      
+      // Force change detection
+      this.cdr.detectChanges();
     } catch (e) {
       console.error('Error sorting documents:', e);
     }
@@ -550,6 +618,9 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     this.displayedColumns.set(this.incomingColumns);
     this.showNoAttachmentsMessage.set(false);
     
+    // Force change detection to update UI
+    this.cdr.detectChanges();
+    
     console.log('Cleared results and reset display state');
   }
   
@@ -574,8 +645,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
         // Trigger change event to ensure bound models are updated
         const event = new Event('input', { bubbles: true });
         inputElement.dispatchEvent(event);
-        
-        console.log(`Reset input field: ${inputElement.name || 'unnamed'}`);
       });
       
       // Reset mat-input elements
@@ -853,30 +922,83 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       const currentParams = this.searchParams();
       const updatedParams = { ...currentParams } as Record<string, any>;
 
-      updatedParams[field] = value;
-
-      // Update searchParams signal
-      this.searchParams.set(updatedParams as SearchParams);
-
       // If document type changes
       if (field === 'documentType') {
-        // Update displayed columns
-        this.displayedColumns.set(
-          value === 'incoming' ? this.incomingColumns : this.outgoingColumns
-        );
-
-        // Reset results table
-        this.documents.set([]);
-        this.hasSearched = false;
-
-        // Reset pagination
-        this.pageIndex.set(0);
-        this.totalItems.set(0);
+        // Check if the value is actually different
+        if (currentParams.documentType !== value) {
+          console.log(`Document type changed from ${currentParams.documentType} to ${value}`);
+          
+          // Reset the form except for document type
+          this.ngZone.run(() => {
+            // First update the document type value
+            updatedParams[field] = value;
+            this.searchParams.set(updatedParams as SearchParams);
+            
+            // Update displayed columns
+            this.displayedColumns.set(
+              value === 'incoming' ? this.incomingColumns : this.outgoingColumns
+            );
+            
+            // Reset all form fields except document type
+            this.resetFormForDocumentTypeChange(value);
+            
+            // Reset results table
+            this.documents.set([]);
+            this.hasSearched = false;
+            
+            // Reset pagination
+            this.pageIndex.set(0);
+            this.totalItems.set(0);
+            
+            // Update UI
+            this.cdr.detectChanges();
+          });
+          
+          return; // Exit early since we've handled everything
+        }
       }
-
+      
+      // Handle normal field updates
+      updatedParams[field] = value;
+      this.searchParams.set(updatedParams as SearchParams);
       console.log('Updated search params:', updatedParams);
     } catch (error) {
       console.error('Error updating search param:', error);
+    }
+  }
+  
+  /**
+   * Reset form when document type changes
+   * Special version of reset that preserves the selected document type
+   */
+  private resetFormForDocumentTypeChange(documentType: string) {
+    console.log(`Resetting form for document type change to: ${documentType}`);
+    
+    try {
+      // Reset the reactive form while preserving document type
+      this.searchForm.reset({
+        searchType: 'all',
+        query: '',
+        filters: {
+          documentType: documentType,
+          issueDate: '',
+          expirationDate: '',
+          status: '',
+          receivedDate: '',
+          documentNumber: '',
+          signer: ''
+        }
+      });
+      
+      // Reset input fields using direct DOM manipulation
+      this.resetInputElementsDirectly();
+      
+      // Reset results but keep document type
+      this.clearResults();
+      
+      console.log('Form reset completed for document type change');
+    } catch (error) {
+      console.error('Error during form reset for document type change:', error);
     }
   }
 
