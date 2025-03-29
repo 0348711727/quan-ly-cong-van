@@ -56,7 +56,6 @@ export class CcSelectComponent {
     const currentDisplay = this.dropdown.nativeElement.style.display;
     this.dropdown.nativeElement.style.display =
       currentDisplay === 'block' ? 'none' : 'block';
-    console.log(this.dropdown.nativeElement.style.display);
   }
   selectValue(value: string | null) {
     this.value = value;

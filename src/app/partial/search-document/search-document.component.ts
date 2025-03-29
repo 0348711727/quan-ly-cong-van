@@ -109,7 +109,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   private destroyRef = inject(DestroyRef);
   protected documentService = inject(DocumentService);
   private fb = inject(FormBuilder);
-  private http = inject(HttpClientService);
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
   dialog = inject(MatDialog);
@@ -161,12 +160,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   @ViewChild('inputAuthor') inputAuthor!: CcInputComponent;
   @ViewChild('inputSummary') inputSummary!: CcInputComponent;
 
-  readonly searchTypes = [
-    { value: 'all', label: 'All' },
-    { value: 'incoming', label: 'Incoming' },
-    { value: 'outgoing', label: 'Outgoing' }
-  ];
-
   readonly documentTypes = DocumentTypeValues;
 
   private searchSubject = new BehaviorSubject<string>('');
@@ -202,7 +195,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       debounceTime(300),
       distinctUntilChanged(),
       tap(() => {
-        console.log('Processing search query...');
         this.isLoading.set(true);
       }),
       switchMap((query) => {
@@ -220,7 +212,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
         };
 
         if (searchType === 'incoming') {
-          console.log('Searching incoming documents with query:', query);
           return this.documentService.searchIncomingDocuments$(searchParams).pipe(
             catchError((error) => {
               console.error('Error searching incoming documents:', error);
@@ -228,7 +219,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
             })
           );
         } else if (searchType === 'outgoing') {
-          console.log('Searching outgoing documents with query:', query);
           return this.documentService.searchOutgoingDocuments$(searchParams).pipe(
             catchError((error) => {
               console.error('Error searching outgoing documents:', error);
@@ -236,7 +226,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
             })
           );
         } else {
-          console.log('Searching all documents with query:', query);
           // Since searchDocuments$ doesn't exist, we use searchIncomingDocuments$ as an alternative
           return this.documentService.searchIncomingDocuments$(searchParams).pipe(
             catchError((error) => {
@@ -247,7 +236,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
         }
       }),
       tap((results) => {
-        console.log('Search results:', results);
         this.isLoading.set(false);
         // Ensure that results is an array before assigning it
         this.results.set(Array.isArray(results) ? results : []);
@@ -258,7 +246,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     // Monitor form changes
     this.searchForm.get('query')?.valueChanges.pipe(
       tap((value) => {
-        console.log('Search query changed:', value);
         if (value?.trim()) {
           this.searchSubject.next(value);
         } else {
@@ -270,7 +257,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
 
     this.searchForm.get('searchType')?.valueChanges.pipe(
       tap((value) => {
-        console.log('Search type changed:', value);
         const query = this.searchForm.get('query')?.value;
         if (query?.trim()) {
           this.searchSubject.next(query);
@@ -283,7 +269,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     this.searchForm.get('filters')?.valueChanges.pipe(
       debounceTime(500),
       tap((filters) => {
-        console.log('Filters changed:', filters);
         const query = this.searchForm.get('query')?.value;
         if (query?.trim()) {
           this.searchSubject.next(query);
@@ -327,7 +312,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
 
   onChangeSearch() {
     try {
-      console.log('Search button clicked');
       this.loading.set(true);
       
       // Reset pagination when performing a new search
@@ -369,9 +353,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges();
     
     searchFunction(searchParams).subscribe({
-      next: (response: any) => {
-        console.log('Search response received:', response);
-        
+      next: (response: any) => {      
         try {
           const {
             data: { documents, pagination },
@@ -380,11 +362,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
           // Update pagination information
           this.totalItems.set(pagination.totalItems);
           
-          // Verify the structure of received documents 
-          this.debugDocumentStructure(documents);
-          
-          if (!documents || documents.length === 0) {
-            console.log('No documents found in search results');
+          if (!documents || documents.length === 0) {          
             this.documents.set([]);
             this.results.set([]); // Sync both result arrays
             this.hasSearched = true;
@@ -394,8 +372,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
             this.cdr.detectChanges();
             return;
           }
-          
-          console.log(`Found ${documents.length} documents in search results`);
           
           // Keep dates as strings for display, but add additional properties for sorting
           const docs = (documents as SearchResultDocument[]).map((doc) => {
@@ -411,8 +387,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
           // Update both result arrays to ensure consistency
           this.documents.set(docs);
           this.results.set(docs); // Sync the results signal as well
-          
-          console.log('Documents after processing:', this.documents());
 
           // Sort documents by issuedDate
           this.sortDocumentsByIssuedDate();
@@ -452,8 +426,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   }
 
   public handleSearch(searchParams: any) {
-    console.log('Handling search for document type:', searchParams.documentType);
-    
     if (searchParams.documentType === 'incoming') {
       this.searchDocuments(
         searchParams,
@@ -473,8 +445,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   /**
    * Handle page change events from the paginator
    */
-  onPageChange(event: PageEvent) {
-    console.log("onPageChange", event);
+  onPageChange(event: PageEvent) {  
     this.pageSize.set(event.pageSize);
     this.pageIndex.set(event.pageIndex);
 
@@ -509,7 +480,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
         }
       });
       
-      console.log('Sorted documents:', sortedDocs);
       this.documents.set(sortedDocs);
       this.results.set(sortedDocs); // Also update results signal for consistency
       
@@ -520,14 +490,18 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     }
   }
 
+  reset() {
+    this.clearResults();
+
+    this.cdr.detectChanges();
+  }
+
   /**
    * Reset all search fields and results
    */
-  reset() {
+  reset_temp() {
     // Run inside NgZone to ensure UI updates
     this.ngZone.run(() => {
-      console.log('Starting reset process...');
-      
       try {
         // Strategy 1: Reset the reactive form explicitly
         this.resetReactiveForm();
@@ -548,8 +522,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
         
         // Force change detection to update UI
         this.cdr.detectChanges();
-        
-        console.log('All search fields and results have been reset');
       } catch (error) {
         console.error('Error during reset:', error);
       }
@@ -597,8 +569,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       // Manually trigger valueChanges to ensure subscribers update
       control?.updateValueAndValidity({ emitEvent: true });
     });
-    
-    console.log('Reset reactive form controls complete');
   }
   
   /**
@@ -620,8 +590,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     
     // Force change detection to update UI
     this.cdr.detectChanges();
-    
-    console.log('Cleared results and reset display state');
   }
   
   /**
@@ -632,7 +600,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       // Find all input elements within the form container
       const formContainer = document.querySelector('.main-container__formInput');
       if (!formContainer) {
-        console.log('Form container not found');
         return;
       }
       
@@ -656,8 +623,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
           // Trigger change event
           const event = new Event('input', { bubbles: true });
           input.dispatchEvent(event);
-          
-          console.log(`Reset mat-input: ${input.name || 'unnamed'}`);
         }
       });
       
@@ -680,8 +645,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
           }
         }
       });
-      
-      console.log(`Reset ${inputElements.length} input elements directly`);
     } catch (error) {
       console.error('Error resetting DOM elements directly:', error);
     }
@@ -693,11 +656,8 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    */
   private resetFormComponents() {
     try {
-      console.log('Resetting form components...');
-      
       // Reset document type select 
       if (this.selectDocumentType) {
-        console.log('Resetting document type to incoming');
         this.selectDocumentType.value = 'incoming';
         // Trigger change detection
         this.cdr.detectChanges();
@@ -718,14 +678,12 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    */
   private resetDatePickers() {
     if (this.datePickerFrom) {
-      console.log('Resetting datePickerFrom');
       this.datePickerFrom.writeValue('');
       // Don't directly assign to the value input signal as it's read-only
       // Instead, use component's methods or trigger events
     }
 
     if (this.datePickerTo) {
-      console.log('Resetting datePickerTo');  
       this.datePickerTo.writeValue('');
       // Don't directly assign to the value input signal as it's read-only
     }
@@ -747,8 +705,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     
     inputComponents.forEach(comp => {
       if (comp.ref) {
-        console.log(`Resetting ${comp.name}`);
-        
         // Try multiple ways to reset the value
         try {
           // Method 1: Using writeValue if available (use type assertion since it's dynamically checked)
@@ -785,10 +741,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       const attachmentId = param2;
       const filename = param3 || '';
       
-      console.log(`Downloading attachment ${attachmentId} for document ${documentId}`);
-      
       if (!attachmentId) {
-        console.log('No attachment ID provided');
         this.showNoAttachmentsMessage.set(true);
         return;
       }
@@ -807,8 +760,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
         )
         .subscribe((response: any) => {
           if (!response) return;
-          
-          console.log('Download successful');
           
           // Create blob from the response data
           const blob = new Blob([response], { type: 'application/octet-stream' });
@@ -926,8 +877,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       if (field === 'documentType') {
         // Check if the value is actually different
         if (currentParams.documentType !== value) {
-          console.log(`Document type changed from ${currentParams.documentType} to ${value}`);
-          
           // Reset the form except for document type
           this.ngZone.run(() => {
             // First update the document type value
@@ -961,7 +910,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       // Handle normal field updates
       updatedParams[field] = value;
       this.searchParams.set(updatedParams as SearchParams);
-      console.log('Updated search params:', updatedParams);
     } catch (error) {
       console.error('Error updating search param:', error);
     }
@@ -972,8 +920,6 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    * Special version of reset that preserves the selected document type
    */
   private resetFormForDocumentTypeChange(documentType: string) {
-    console.log(`Resetting form for document type change to: ${documentType}`);
-    
     try {
       // Reset the reactive form while preserving document type
       this.searchForm.reset({
@@ -995,61 +941,8 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       
       // Reset results but keep document type
       this.clearResults();
-      
-      console.log('Form reset completed for document type change');
     } catch (error) {
       console.error('Error during form reset for document type change:', error);
-    }
-  }
-
-  /**
-   * Debug helper to verify the structure of received documents
-   */
-  private debugDocumentStructure(documents: any[]) {
-    if (!documents || documents.length === 0) {
-      console.log('No documents to debug');
-      return;
-    }
-    
-    const firstDoc = documents[0];
-    console.log('Structure of the first document:', {
-      id: firstDoc.id,
-      documentNumber: firstDoc.documentNumber,
-      receivedDate: firstDoc.receivedDate,
-      issuedDate: firstDoc.issuedDate,
-      referenceNumber: firstDoc.referenceNumber,
-      author: firstDoc.author,
-      summary: firstDoc.summary,
-      // Verify data types
-      issuedDateType: typeof firstDoc.issuedDate,
-      authorType: typeof firstDoc.author,
-      summaryType: typeof firstDoc.summary
-    });
-    
-    // Verify date formats
-    if (firstDoc.issuedDate) {
-      console.log('issuedDate format:', firstDoc.issuedDate);
-    }
-    if (firstDoc.receivedDate) {
-      console.log('receivedDate format:', firstDoc.receivedDate);
-    }
-    if (firstDoc.dueDate) {
-      console.log('dueDate format:', firstDoc.dueDate);
-    }
-  }
-
-  openDocument(document: any) {
-    const isIncoming = document.hasOwnProperty('sender');
-    
-    console.log(`Opening ${isIncoming ? 'incoming' : 'outgoing'} document:`, document);
-    
-    // Use the base URL from environment, and if it doesn't exist, use a relative path
-    const baseUrl = environment.RESOURCE_URL || '';
-    
-    if (isIncoming) {
-      window.open(`${baseUrl}/home/incoming/${document.id}`, '_blank');
-    } else {
-      window.open(`${baseUrl}/home/outgoing/${document.id}`, '_blank');
     }
   }
 }
