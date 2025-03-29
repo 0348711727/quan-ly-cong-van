@@ -28,7 +28,7 @@ export function correctFormat(format: DATE_FORMAT): DATE_FORMAT {
   return DEFAULT_DATE_FORMAT;
 }
 
-export type DATE_FORMAT = 'DD/MM/YYYY' | 'DD-MMM-YYYY';
+export type DATE_FORMAT = 'DD/MM/YYYY' | 'DD-MMM-YYYY' | 'YYYY-MM-DD';
 export const DEFAULT_DATE_FORMAT: DATE_FORMAT = 'DD/MM/YYYY';
 export const DEFAULT_DISPLAY_DATE_FORMAT = {
   monthYearLabel: 'YYYY',

@@ -32,7 +32,7 @@ export class HttpClientService {
       .post(url, body, { headers: baseHeaders })
       .pipe(finalize(() => this.loading.set(false)));
   }
-  commonPatch(props: { url: string; headers: {}; params: {}; body: {} }) {
+  commonPatch(props: { url: string; headers?: {}; params?: {}; body: {} }) {
     const { url, headers, params, body } = props;
     this.loading.set(true);
     return this.httpClient

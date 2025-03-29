@@ -1,5 +1,6 @@
 @use './app/commons/variable' as *;
 @use './app/commons/material';
+
 html,
 body {
   height: 100%;
@@ -135,4 +136,16 @@ a {
   align-items: center;
   margin: 0;
   height: 100%;
+}
+
+cc-dropdown,
+cc-input {
+  mat-form-field {
+    width: 100%;
+    margin-bottom: -20px;
+
+    .mat-mdc-text-field-wrapper {
+      padding-left: 0 !important;
+    }
+  }
 }

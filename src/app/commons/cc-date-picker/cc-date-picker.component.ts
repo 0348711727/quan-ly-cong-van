@@ -193,7 +193,7 @@ export class CcDatePickerComponent {
 
   onBlur() {
     if (this.date().hasError('matDatepickerParse')) {
-      this.formatError = 'quoteAndApply.proposalInformation.invalidDateFormat';
+      this.formatError = 'Invalid Date Format';
 
       return;
     }

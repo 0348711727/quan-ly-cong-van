@@ -1,7 +1,7 @@
 <div class="main-container p-3">
   <mat-label
     class="main-container__header"
-    >{{ `${documentTitle} công văn` }}</mat-label
+    >{{ `${documentTitle()} công văn` }}</mat-label
   >
   <div class="main-container__formInput p-3">
     <div class="row">
@@ -30,22 +30,26 @@
         ></cc-input>
       </div>
       <div class="col-3">
-        <cc-input
+        <cc-dropdown
+          [listDropdown]="dropdown().priority"
           [value]="body().priority"
           [errorMessage]="this.error()?.['priority']?.[0]?.message"
           (valueChange)="onChange('priority', $event)"
           label="priority"
-        ></cc-input>
+        >
+        </cc-dropdown>
       </div>
     </div>
     <div class="row">
       <div class="col-3">
-        <cc-input
+        <cc-dropdown
+          [listDropdown]="dropdown().documentType"
           [value]="body().type"
-          [errorMessage]="this.error()?.['type']?.[0]?.message"
           (valueChange)="onChange('type', $event)"
+          [errorMessage]="this.error()?.['type']?.[0]?.message"
           label="type"
-        ></cc-input>
+        >
+        </cc-dropdown>
       </div>
       <div class="col-3">
         <cc-input
@@ -64,12 +68,14 @@
         ></cc-input>
       </div>
       <div class="col-3">
-        <cc-input
+        <cc-dropdown
+          [listDropdown]="dropdown().receivingMethod"
           [value]="body().receivingMethod"
           [errorMessage]="this.error()?.['receivingMethod']?.[0]?.message"
           (valueChange)="onChange('receivingMethod', $event)"
           label="receivingMethod"
-        ></cc-input>
+        >
+        </cc-dropdown>
       </div>
     </div>
     <div class="row">
@@ -114,3 +120,5 @@
     </div>
   </div>
 </div>
+
+<p-toast />

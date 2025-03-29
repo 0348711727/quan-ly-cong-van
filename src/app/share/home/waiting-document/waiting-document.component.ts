@@ -37,10 +37,13 @@ export class WaitingDocumentComponent {
   @Output() finishDocument = new EventEmitter<any>();
   MOVE_CV = MOVE_CV;
   chuyen = viewChild('chuyen');
-  returnDocument() {
+  returnDocument(element: any) {
     localStorage.setItem('action', 'Sửa');
-    this.router.navigateByUrl('add-document', { state: { data: {} } });
+    this.router.navigateByUrl('add-document', {
+      state: { data: element, action: true },
+    });
   }
+
   onChange(event: string) {
     console.log(event);
   }
