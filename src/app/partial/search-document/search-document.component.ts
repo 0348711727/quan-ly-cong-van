@@ -9,6 +9,9 @@ import {
   ChangeDetectionStrategy,
   computed,
   DestroyRef,
+  ChangeDetectorRef,
+  NgZone,
+  AfterViewInit,
 } from '@angular/core';
 import { MatLabel } from '@angular/material/form-field';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -34,18 +37,18 @@ import { HttpClientService } from '../../services/http-client.service';
 import { MatDialog } from '@angular/material/dialog';
 import { environment } from '../../../environments/environment';
 
-// Definir DocumentTypeValues como fallback si no está disponible
+// Define DocumentTypeValues as fallback if not available
 const DocumentTypeValues = [
   { value: 'incoming', label: 'Incoming Document' },
   { value: 'outgoing', label: 'Outgoing Document' },
 ];
 
-// Interfaz extendida para uso local
+// Extended interface for local use
 interface SearchResultDocument {
   id: number;
   documentNumber?: string;
   receivedDate?: string;
-  issuedDate: string; // La fecha original como cadena
+  issuedDate: string; // The original date as string
   referenceNumber: string;
   author: string;
   summary: string;
@@ -56,7 +59,7 @@ interface SearchResultDocument {
   attachments?: string[];
   processingOpinion?: string;
   status?: string;
-  // Para ordenamiento
+  // For sorting
   issuedDateObj?: Date | null;
 }
 
@@ -102,11 +105,13 @@ interface Pagination {
   styleUrl: './search-document.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SearchDocumentComponent implements OnInit {
+export class SearchDocumentComponent implements OnInit, AfterViewInit {
   private destroyRef = inject(DestroyRef);
   protected documentService = inject(DocumentService);
   private fb = inject(FormBuilder);
   private http = inject(HttpClientService);
+  private cdr = inject(ChangeDetectorRef);
+  private ngZone = inject(NgZone);
   dialog = inject(MatDialog);
 
   searchParams: WritableSignal<SearchParams> = signal({
@@ -185,6 +190,8 @@ export class SearchDocumentComponent implements OnInit {
   emptyResults = computed(() => this.results().length === 0);
   showNoAttachmentsMessage = signal<boolean>(false);
 
+  viewInitialized = false;
+
   ngOnInit() {
     if (this.selectDocumentType) {
       this.selectDocumentType.value = 'incoming';
@@ -202,7 +209,7 @@ export class SearchDocumentComponent implements OnInit {
         const searchType = this.searchForm.get('searchType')?.value;
         const filters = this.searchForm.get('filters')?.value;
 
-        // Crear un objeto SearchParams válido para pasar a los métodos de búsqueda
+        // Create a valid SearchParams object to pass to search methods
         const searchParams: SearchParams = {
           documentType: filters?.documentType || 'incoming',
           author: filters?.author || '',
@@ -230,7 +237,7 @@ export class SearchDocumentComponent implements OnInit {
           );
         } else {
           console.log('Searching all documents with query:', query);
-          // Como searchDocuments$ no existe, usamos searchIncomingDocuments$ como alternativa
+          // Since searchDocuments$ doesn't exist, we use searchIncomingDocuments$ as an alternative
           return this.documentService.searchIncomingDocuments$(searchParams).pipe(
             catchError((error) => {
               console.error('Error searching all documents:', error);
@@ -242,7 +249,7 @@ export class SearchDocumentComponent implements OnInit {
       tap((results) => {
         console.log('Search results:', results);
         this.isLoading.set(false);
-        // Asegurar que results es un array antes de asignarlo
+        // Ensure that results is an array before assigning it
         this.results.set(Array.isArray(results) ? results : []);
       }),
       takeUntilDestroyed(this.destroyRef)
@@ -284,6 +291,38 @@ export class SearchDocumentComponent implements OnInit {
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe();
+  }
+
+  ngAfterViewInit() {
+    // Mark that view has been initialized, so we can safely access ViewChild references
+    this.viewInitialized = true;
+    
+    // Initial reset to ensure form controls are in sync with initial values
+    setTimeout(() => {
+      this.syncFormControls();
+    }, 0);
+  }
+  
+  /**
+   * Synchronize form controls with current values
+   * This is needed because Angular's change detection might not pick up all changes
+   */
+  syncFormControls() {
+    if (!this.viewInitialized) return;
+    
+    try {
+      // Update document type selector
+      if (this.selectDocumentType) {
+        this.selectDocumentType.value = this.searchParams().documentType;
+      }
+      
+      // Sync other fields from searchParams if needed
+      
+      // Force change detection
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error synchronizing form controls:', error);
+    }
   }
 
   onChangeSearch() {
@@ -413,61 +452,258 @@ export class SearchDocumentComponent implements OnInit {
     }
   }
 
+  /**
+   * Reset all search fields and results
+   */
   reset() {
-    // Clear all search parameters and reset documentType to default value
-    this.searchParams.set({ documentType: 'incoming' });
-
-    // Clear search results
+    // Run inside NgZone to ensure UI updates
+    this.ngZone.run(() => {
+      console.log('Starting reset process...');
+      
+      try {
+        // Strategy 1: Reset the reactive form explicitly
+        this.resetReactiveForm();
+        
+        // Strategy 2: Reset searchParams and trigger change detection
+        this.searchParams.set({ documentType: 'incoming' });
+        
+        // Strategy 3: Direct DOM manipulation as a fallback
+        this.resetInputElementsDirectly();
+        
+        // Strategy 4: Use component methods via ViewChild references
+        if (this.viewInitialized) {
+          this.resetFormComponents();
+        }
+        
+        // Reset UI state
+        this.clearResults();
+        
+        // Force change detection to update UI
+        this.cdr.detectChanges();
+        
+        console.log('All search fields and results have been reset');
+      } catch (error) {
+        console.error('Error during reset:', error);
+      }
+    });
+  }
+  
+  /**
+   * Reset the reactive form controls and trigger value changes
+   */
+  private resetReactiveForm() {
+    // Reset the form model itself
+    this.searchForm.reset({
+      searchType: 'all',
+      query: '',
+      filters: {
+        documentType: '',
+        issueDate: '',
+        expirationDate: '',
+        status: '',
+        receivedDate: '',
+        documentNumber: '',
+        signer: ''
+      }
+    });
+    
+    // Explicitly mark all controls as pristine and untouched
+    Object.keys(this.searchForm.controls).forEach(key => {
+      const control = this.searchForm.get(key);
+      control?.markAsPristine();
+      control?.markAsUntouched();
+      
+      // If it's a form group, reset all its child controls
+      if (control?.get) {
+        Object.keys(control.value || {}).forEach(childKey => {
+          const childControl = control.get(childKey);
+          childControl?.setValue('');
+          childControl?.markAsPristine();
+          childControl?.markAsUntouched();
+          
+          // Manually trigger valueChanges to ensure subscribers update
+          childControl?.updateValueAndValidity({ emitEvent: true });
+        });
+      }
+      
+      // Manually trigger valueChanges to ensure subscribers update
+      control?.updateValueAndValidity({ emitEvent: true });
+    });
+    
+    console.log('Reset reactive form controls complete');
+  }
+  
+  /**
+   * Clear all results and reset display state
+   */
+  private clearResults() {
+    // Clear both results arrays
     this.documents.set([]);
+    this.results.set([]);
     this.hasSearched = false;
 
     // Reset pagination
     this.pageIndex.set(0);
     this.totalItems.set(0);
 
-    // Reset input fields
+    // Reset display settings
+    this.displayedColumns.set(this.incomingColumns);
+    this.showNoAttachmentsMessage.set(false);
+    
+    console.log('Cleared results and reset display state');
+  }
+  
+  /**
+   * Use direct DOM manipulation to reset input elements as a fallback
+   */
+  private resetInputElementsDirectly() {
     try {
-      // Reset document type select to default value
-      if (this.selectDocumentType) {
-        this.selectDocumentType.value = 'incoming';
+      // Find all input elements within the form container
+      const formContainer = document.querySelector('.main-container__formInput');
+      if (!formContainer) {
+        console.log('Form container not found');
+        return;
       }
-
-      // Reset date pickers
-      if (this.datePickerFrom) {
-        this.datePickerFrom.writeValue('');
-      }
-
-      if (this.datePickerTo) {
-        this.datePickerTo.writeValue('');
-      }
-
-      // Reset text inputs
-      if (this.inputNumber) {
-        if ('writeValue' in this.inputNumber) {
-          (this.inputNumber as any).writeValue('');
-        } else if ('value' in this.inputNumber) {
-          (this.inputNumber as any).value = '';
+      
+      // Reset standard input elements within custom components
+      const inputElements = formContainer.querySelectorAll('input');
+      inputElements.forEach(input => {
+        const inputElement = input as HTMLInputElement;
+        inputElement.value = '';
+        
+        // Trigger change event to ensure bound models are updated
+        const event = new Event('input', { bubbles: true });
+        inputElement.dispatchEvent(event);
+        
+        console.log(`Reset input field: ${inputElement.name || 'unnamed'}`);
+      });
+      
+      // Reset mat-input elements
+      const matInputs = formContainer.querySelectorAll('mat-input, .mat-input-element');
+      matInputs.forEach(input => {
+        if (input instanceof HTMLInputElement) {
+          input.value = '';
+          
+          // Trigger change event
+          const event = new Event('input', { bubbles: true });
+          input.dispatchEvent(event);
+          
+          console.log(`Reset mat-input: ${input.name || 'unnamed'}`);
         }
-      }
-
-      if (this.inputAuthor) {
-        if ('writeValue' in this.inputAuthor) {
-          (this.inputAuthor as any).writeValue('');
-        } else if ('value' in this.inputAuthor) {
-          (this.inputAuthor as any).value = '';
+      });
+      
+      // Clear any visible text/placeholder that might be displayed
+      const inputContainers = formContainer.querySelectorAll('.mat-form-field');
+      inputContainers.forEach(container => {
+        // Try to find and clear any internal state
+        const inputElement = container.querySelector('input');
+        if (inputElement instanceof HTMLInputElement) {
+          inputElement.value = '';
+          
+          // Try to reset any Angular Material specific properties
+          try {
+            // Mark the field as touched to ensure validation is triggered
+            inputElement.blur();
+            inputElement.focus();
+            inputElement.blur();
+          } catch (e) {
+            // Ignore errors from these additional attempts
+          }
         }
-      }
-
-      if (this.inputSummary) {
-        if ('writeValue' in this.inputSummary) {
-          (this.inputSummary as any).writeValue('');
-        } else if ('value' in this.inputSummary) {
-          (this.inputSummary as any).value = '';
-        }
-      }
+      });
+      
+      console.log(`Reset ${inputElements.length} input elements directly`);
     } catch (error) {
-      console.error('Error resetting form:', error);
+      console.error('Error resetting DOM elements directly:', error);
     }
+  }
+  
+  /**
+   * Reset individual form components
+   * Separated for better error handling and clarity
+   */
+  private resetFormComponents() {
+    try {
+      console.log('Resetting form components...');
+      
+      // Reset document type select 
+      if (this.selectDocumentType) {
+        console.log('Resetting document type to incoming');
+        this.selectDocumentType.value = 'incoming';
+        // Trigger change detection
+        this.cdr.detectChanges();
+      }
+
+      // Reset date pickers with a more direct approach
+      this.resetDatePickers();
+
+      // Reset text inputs with a more direct approach
+      this.resetTextInputs();
+    } catch (error) {
+      console.error('Error resetting form components:', error);
+    }
+  }
+  
+  /**
+   * Reset date picker components
+   */
+  private resetDatePickers() {
+    if (this.datePickerFrom) {
+      console.log('Resetting datePickerFrom');
+      this.datePickerFrom.writeValue('');
+      // Don't directly assign to the value input signal as it's read-only
+      // Instead, use component's methods or trigger events
+    }
+
+    if (this.datePickerTo) {
+      console.log('Resetting datePickerTo');  
+      this.datePickerTo.writeValue('');
+      // Don't directly assign to the value input signal as it's read-only
+    }
+    
+    // Force change detection after date pickers update
+    this.cdr.detectChanges();
+  }
+  
+  /**
+   * Reset text input components
+   */
+  private resetTextInputs() {
+    // Reset input fields - try multiple approaches to ensure they're cleared
+    const inputComponents = [
+      { name: 'inputNumber', ref: this.inputNumber },
+      { name: 'inputAuthor', ref: this.inputAuthor },
+      { name: 'inputSummary', ref: this.inputSummary }
+    ];
+    
+    inputComponents.forEach(comp => {
+      if (comp.ref) {
+        console.log(`Resetting ${comp.name}`);
+        
+        // Try multiple ways to reset the value
+        try {
+          // Method 1: Using writeValue if available (use type assertion since it's dynamically checked)
+          if (typeof (comp.ref as any).writeValue === 'function') {
+            (comp.ref as any).writeValue('');
+          }
+          
+          // Method 2: Trigger valueChange if it's an output
+          if ((comp.ref as any).valueChange && typeof (comp.ref as any).valueChange.emit === 'function') {
+            (comp.ref as any).valueChange.emit('');
+          }
+          
+          // Method 3: Use onValueChange method if available
+          if (typeof (comp.ref as any).onValueChange === 'function') {
+            (comp.ref as any).onValueChange('');
+          }
+        } catch (e) {
+          console.error(`Error resetting ${comp.name}:`, e);
+        }
+      }
+    });
+    
+    // Force change detection after text inputs update
+    this.cdr.detectChanges();
   }
 
   // Función estándar para descargar archivos adjuntos
@@ -475,7 +711,7 @@ export class SearchDocumentComponent implements OnInit {
     this.showNoAttachmentsMessage.set(false);
     
     if (typeof param1 === 'number' && typeof param2 === 'number') {
-      // Caso donde param1 es documentId (number) y param2 es attachmentId (number)
+      // Case where param1 is documentId (number) and param2 is attachmentId (number)
       const documentId = param1;
       const attachmentId = param2;
       const filename = param3 || '';
@@ -488,7 +724,7 @@ export class SearchDocumentComponent implements OnInit {
         return;
       }
       
-      // La API espera un filename, usamos 'temp' + attachmentId como valor por defecto
+      // The API expects a filename, we use 'temp' + attachmentId as default value
       const filenameToUse = `temp_${attachmentId}`;
       
       this.documentService.downloadAttachment$(filenameToUse, 'incoming')
@@ -685,7 +921,7 @@ export class SearchDocumentComponent implements OnInit {
     
     console.log(`Opening ${isIncoming ? 'incoming' : 'outgoing'} document:`, document);
     
-    // Usar la URL base del environment, y si no existe, usar una ruta relativa
+    // Use the base URL from environment, and if it doesn't exist, use a relative path
     const baseUrl = environment.RESOURCE_URL || '';
     
     if (isIncoming) {
@@ -693,23 +929,5 @@ export class SearchDocumentComponent implements OnInit {
     } else {
       window.open(`${baseUrl}/home/outgoing/${document.id}`, '_blank');
     }
-  }
-
-  clearSearch() {
-    this.searchForm.reset({
-      searchType: 'all',
-      query: '',
-      filters: {
-        documentType: '',
-        issueDate: '',
-        expirationDate: '',
-        status: '',
-        receivedDate: '',
-        documentNumber: '',
-        signer: ''
-      }
-    });
-    this.results.set([]);
-    console.log('Search form cleared');
   }
 }
