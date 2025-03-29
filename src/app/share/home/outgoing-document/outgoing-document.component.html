@@ -1,0 +1,191 @@
+<div>
+  <!-- Waiting Documents Section -->
+  <h2>Văn bản đi chờ xử lý</h2>
+  <table
+    mat-table
+    [dataSource]="waitingDocuments()"
+    class="mat-elevation-z8 demo-table"
+  >
+    <ng-container matColumnDef="stt">
+      <th mat-header-cell *matHeaderCellDef>{{ "STT" }}</th>
+      <td mat-cell *matCellDef="let element; let i = index">
+        {{ waitingCurrentPage() * waitingPageSize() + i + 1 }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="documentNumber">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Số ký hiệu" }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.documentNumber }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="issuedDate">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Ngày phát hành văn bản" }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.issuedDate }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="author">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Tác giả" }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.signedBy }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="summary">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Trích yếu" }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.summary }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="attachments">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Nội dung" }}
+      </th>
+      <td mat-cell *matCellDef="let element">
+        {{ element.attachments ? "File đính kèm" : "" }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="process">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Xử lý" }}
+      </th>
+      <td mat-cell *matCellDef="let element">
+        <div class="d-flex flex-column">
+          <a
+            href="javascript:void(0)"
+            class="text-primary mb-1"
+            (click)="publishDocument(element)"
+            >Phát hành</a
+          >
+          <a
+            href="javascript:void(0)"
+            class="text-warning mb-1"
+            (click)="returnDocument(element)"
+            >Điều chỉnh</a
+          >
+        </div>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="waitingColumns()"></tr>
+    <tr mat-row *matRowDef="let row; columns: waitingColumns()"></tr>
+  </table>
+
+  @if(waitingDocuments().length === 0) {
+  <div class="text-center my-3">Không có văn bản đi chờ xử lý</div>
+  }
+
+  <mat-paginator
+    [length]="waitingTotalItems()"
+    [pageSize]="waitingPageSize()"
+    [pageSizeOptions]="[3, 5, 10, 25, 100]"
+    [pageIndex]="waitingCurrentPage()"
+    (page)="handleWaitingPageEvent($event)"
+    aria-label="Select page"
+  >
+  </mat-paginator>
+
+  <!-- Finished Documents Section -->
+  <h2 class="mt-4">Văn bản đi đã xử lý</h2>
+  <table
+    mat-table
+    [dataSource]="finishedDocuments()"
+    class="mat-elevation-z8 demo-table"
+  >
+    <ng-container matColumnDef="stt">
+      <th mat-header-cell *matHeaderCellDef>{{ "STT" }}</th>
+      <td mat-cell *matCellDef="let element; let i = index">
+        {{ finishedCurrentPage() * finishedPageSize() + i + 1 }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="documentNumber">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Số ký hiệu" }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.documentNumber }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="issuedDate">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Ngày phát hành văn bản" }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.issuedDate }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="author">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Tác giả" }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.signedBy }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="summary">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Trích yếu" }}
+      </th>
+      <td mat-cell *matCellDef="let element">{{ element.summary }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="attachments">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Nội dung" }}
+      </th>
+      <td mat-cell *matCellDef="let element">
+        {{ element.attachments ? "File đính kèm" : "" }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="process">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "Xử lý" }}
+      </th>
+      <td mat-cell *matCellDef="let element">
+        <div class="d-flex flex-column">
+          <a
+            href="javascript:void(0)"
+            class="text-success"
+            style="pointer-events: none;"
+            >Đã phát hành</a
+          >
+        </div>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="internalRecipient">
+      <th mat-header-cell *matHeaderCellDef>
+        {{ "internalRecipient" | translateAsync }}
+      </th>
+      <td mat-cell *matCellDef="let element">
+        {{ element.internalRecipient | recipientLabel }}
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="finishedColumns()"></tr>
+    <tr
+      mat-row
+      *matRowDef="let row; columns: finishedColumns()"
+      [ngClass]="{ 'highlight-row': row.id === recentlyFinishedDoc() }"
+      [id]="'doc-' + row.id"
+    ></tr>
+  </table>
+
+  @if(finishedDocuments().length === 0) {
+  <div class="text-center my-3">Không có văn bản đi đã xử lý</div>
+  }
+
+  <mat-paginator
+    [length]="finishedTotalItems()"
+    [pageSize]="finishedPageSize()"
+    [pageSizeOptions]="[3, 5, 10, 25, 100]"
+    [pageIndex]="finishedCurrentPage()"
+    (page)="handleFinishedPageEvent($event)"
+    aria-label="Select page"
+  >
+  </mat-paginator>
+</div>

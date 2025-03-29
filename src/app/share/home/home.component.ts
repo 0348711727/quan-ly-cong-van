@@ -1,33 +1,29 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
-  computed,
-  inject,
   OnInit,
+  inject,
   signal,
-  TemplateRef,
   viewChild,
-  WritableSignal,
+  TemplateRef,
 } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatTableModule } from '@angular/material/table';
-import { Router } from '@angular/router';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
-import { MessageService } from 'primeng/api';
+import { MatTableModule } from '@angular/material/table';
 import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
-import {
-  CcDialogComponent,
-  TEMPLATE_TYPE,
-} from '../../commons/cc-dialog/cc-dialog.component';
+import { MatPaginatorModule } from '@angular/material/paginator';
+import { CcToggleGroupComponent } from '../../commons/cc-toggle-group/cc-toggle-group.component';
 import { CcLoadingComponent } from '../../commons/cc-loading/cc-loading.component';
 import { CcRadioGroupComponent } from '../../commons/cc-radio-group/cc-radio-group.component';
-import { CcToggleGroupComponent } from '../../commons/cc-toggle-group/cc-toggle-group.component';
+import { Router } from '@angular/router';
 import { DocumentService } from '../../services/document.service';
+import { MatDialog } from '@angular/material/dialog';
+import { CcDialogComponent } from '../../commons/cc-dialog/cc-dialog.component';
+import { MessageService } from 'primeng/api';
 import { HttpClientService } from '../../services/http-client.service';
-import { MOVE_CV } from '../../share/constant';
-import { FinishedDocumentComponent } from './finished-document/finished-document.component';
-import { WaitingDocumentComponent } from './waiting-document/waiting-document.component';
+import { MOVE_CV } from '../constant';
+import { TEMPLATE_TYPE } from '../../commons/cc-dialog/cc-dialog.component';
+import { IncomingDocumentComponent } from './incoming-document/incoming-document.component';
+import { OutgoingDocumentComponent } from './outgoing-document/outgoing-document.component';
 
 @Component({
   selector: 'app-home',
@@ -40,21 +36,22 @@ import { WaitingDocumentComponent } from './waiting-document/waiting-document.co
     MatPaginatorModule,
     CcToggleGroupComponent,
     CcLoadingComponent,
-    WaitingDocumentComponent,
-    FinishedDocumentComponent,
     CcRadioGroupComponent,
+    IncomingDocumentComponent,
+    OutgoingDocumentComponent,
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
   providers: [MessageService],
 })
 export class HomeComponent implements OnInit {
-  protected httpClient: HttpClientService = inject(HttpClientService);
-  protected messageService: MessageService = inject(MessageService);
-  protected router: Router = inject(Router);
+  protected httpClient = inject(HttpClientService);
+  protected messageService = inject(MessageService);
+  protected router = inject(Router);
   protected documentService = inject(DocumentService);
-  protected dialog: MatDialog = inject(MatDialog);
-  MOVE_CV = MOVE_CV;
+  protected dialog = inject(MatDialog);
+  
+  // Toggle for incoming/outgoing documents
   value = signal('incomingDocuments');
   listToggle = signal([
     {
@@ -62,189 +59,41 @@ export class HomeComponent implements OnInit {
     },
     { label: 'outcomingDocuments' },
   ]);
-  chuyen: any = viewChild.required<TemplateRef<any>>('chuyen');
-  waitingColumns: WritableSignal<string[]> = signal([
-    'stt',
-    'documentNumber',
-    'receivedDate',
-    'documentInfomation',
-    'priority',
-    'dueDate',
-    'sender',
-    'content',
-    'process',
-  ]);
-
-  finishedColumns: WritableSignal<string[]> = signal([
-    'stt',
-    'documentNumber',
-    'receivedDate',
-    'documentInfomation',
-    'priority',
-    'dueDate',
-    'sender',
-    'content',
-    'process',
-    'internalRecipient',
-  ]);
-
-  // Shared data from API
-  allDocuments = signal<any[]>([]);
-
-  // Signal để theo dõi tài liệu vừa được kết thúc
-  recentlyFinishedDoc = signal<string | null>(null);
-
-  // Thêm selectedOption để lưu trữ lựa chọn hiện tại
-  selectedOption = signal<string>('management-staff'); // Mặc định là giá trị của CBQL
-
-  // Thêm biến lưu trữ document đang được xử lý
+  
+  // Constants
+  MOVE_CV = MOVE_CV;
+  
+  // Template reference for the move dialog
+  chuyen = viewChild.required<TemplateRef<any>>('chuyen');
+  
+  // Selected document and option for moving
+  selectedOption = signal<string>('management-staff'); // Default to CBQL
   selectedDocument = signal<any>(null);
 
-  // Computed signals for filtered data
-  waitingDocumentsAll = computed(() => {
-    const filtered = this.allDocuments().filter(
-      (doc) => doc.status === 'waiting'
-    );
-    // Sắp xếp theo documentNumber tăng dần
-    return filtered.sort((a, b) => {
-      // Xử lý trường hợp documentNumber là chuỗi hoặc số
-      const numA =
-        typeof a.documentNumber === 'string'
-          ? parseInt(a.documentNumber.replace(/\D/g, ''))
-          : a.documentNumber;
-      const numB =
-        typeof b.documentNumber === 'string'
-          ? parseInt(b.documentNumber.replace(/\D/g, ''))
-          : b.documentNumber;
-      return numA - numB;
-    });
-  });
-
-  finishedDocumentsAll = computed(() => {
-    const filtered = this.allDocuments().filter(
-      (doc) => doc.status !== 'waiting'
-    );
-    // Sắp xếp theo documentNumber tăng dần
-    return filtered.sort((a, b) => {
-      // Xử lý trường hợp documentNumber là chuỗi hoặc số
-      const numA =
-        typeof a.documentNumber === 'string'
-          ? parseInt(a.documentNumber.replace(/\D/g, ''))
-          : a.documentNumber;
-      const numB =
-        typeof b.documentNumber === 'string'
-          ? parseInt(b.documentNumber.replace(/\D/g, ''))
-          : b.documentNumber;
-      return numA - numB;
-    });
-  });
-
-  // Computed signals for paginated data
-  waitingDocuments = computed(() => {
-    const filteredDocs = this.waitingDocumentsAll();
-    const startIndex = this.waitingCurrentPage() * this.waitingPageSize();
-    return filteredDocs.slice(startIndex, startIndex + this.waitingPageSize());
-  });
-
-  finishedDocuments = computed(() => {
-    const filteredDocs = this.finishedDocumentsAll();
-    const startIndex = this.finishedCurrentPage() * this.finishedPageSize();
-    return filteredDocs.slice(startIndex, startIndex + this.finishedPageSize());
-  });
-
-  // Pagination signals for waiting documents
-  waitingCurrentPage = signal<number>(0);
-  waitingPageSize = signal<number>(3);
-  waitingTotalItems = signal<number>(0);
-
-  // Pagination signals for finished documents
-  finishedCurrentPage = signal<number>(0);
-  finishedPageSize = signal<number>(3);
-  finishedTotalItems = signal<number>(0);
-
   ngOnInit() {
-    this.loadAllDocuments();
+    // No initialization needed as child components handle their own loading
   }
 
   addDocument() {
-    this.router.navigateByUrl('add-document');
-  }
-
-  onChangeToggle(value: string): void {
-    console.log("on change")
-    this.value.set(value);
-    // Reset pagination
-    this.waitingCurrentPage.set(0);
-    this.waitingPageSize.set(3);
-    this.finishedCurrentPage.set(0);
-    this.finishedPageSize.set(3);
-
-    // Reload data
-    this.loadAllDocuments();
+    if (this.value() === 'incomingDocuments') {
+      this.router.navigateByUrl('add-document');
+    } else {
+      this.router.navigateByUrl('add-outgoing-document');
+    }
   }
 
   searchDocument() {
     this.router.navigateByUrl('search-document');
   }
 
-  // Load all documents from API once
-  loadAllDocuments() {
-    const service =
-      this.value() === 'incomingDocuments'
-        ? this.documentService.getDocuments(1, 1000) // Get a larger page size to have enough data for both tables
-        : this.documentService.getOutgoingDocuments(1, 1000);
-
-    service.subscribe({
-      next: (response: any) => {
-        if (response && response.data) {
-          const { documents } = response.data;
-
-          // Store all documents
-          this.allDocuments.set(documents);
-
-          // Calculate total items for each table
-          const waitingDocs = documents.filter(
-            (doc: any) => doc.status === 'waiting'
-          );
-          const finishedDocs = documents.filter(
-            (doc: any) => doc.status !== 'waiting'
-          );
-
-          this.waitingTotalItems.set(waitingDocs.length);
-          this.finishedTotalItems.set(finishedDocs.length);
-        }
-      },
-      error: (error: any) => {
-        console.error('Error loading documents:', error);
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to load documents',
-        });
-      },
-    });
-  }
-
-  // Client-side pagination for waiting documents
-  handleWaitingPageEvent(event: PageEvent) {
-    console.log('Waiting pagination changed:', event);
-    this.waitingPageSize.set(event.pageSize);
-    this.waitingCurrentPage.set(event.pageIndex);
-    // No need to call API again as we're using computed properties for pagination
-  }
-
-  // Client-side pagination for finished documents
-  handleFinishedPageEvent(event: PageEvent) {
-    console.log('Finished pagination changed:', event);
-    this.finishedPageSize.set(event.pageSize);
-    this.finishedCurrentPage.set(event.pageIndex);
-    // No need to call API again as we're using computed properties for pagination
+  onChangeToggle(value: string): void {
+    this.value.set(value);
   }
 
   openDialog(document: any) {
-    // Reset về giá trị mặc định là management-staff (CBQL) trước khi mở dialog
+    // Reset to default option (CBQL) before opening dialog
     this.selectedOption.set('management-staff');
-    // Lưu document đang được xử lý
+    // Store the document being processed
     this.selectedDocument.set(document);
     
     const data = {
@@ -256,121 +105,28 @@ export class HomeComponent implements OnInit {
     return dialog;
   }
 
-  finishDocument(document: any) {
-    // Xác định loại tài liệu dựa trên toggle hiện tại
-    const isIncoming = this.value() === 'incomingDocuments';
-
-    // Gọi API để cập nhật trạng thái
-    this.documentService
-      .updateDocumentStatus(document.documentNumber, 'finished', isIncoming)
-      .subscribe({
-        next: (response: any) => {
-          // Nếu API thành công, cập nhật UI
-          // Tìm tài liệu trong mảng allDocuments
-          const allDocs = this.allDocuments();
-          const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
-
-          if (docIndex !== -1) {
-            // Thay đổi trạng thái từ "waiting" sang "finished"
-            const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
-
-            // Cập nhật mảng allDocuments với tài liệu đã có trạng thái mới
-            const newAllDocs = [...allDocs];
-            newAllDocs[docIndex] = updatedDoc;
-
-            // Gán lại mảng mới cho signal allDocuments
-            this.allDocuments.set(newAllDocs);
-
-            // Lưu ID của tài liệu vừa được kết thúc
-            this.recentlyFinishedDoc.set(document.id);
-
-            // Cập nhật tổng số tài liệu trong pagination
-            const waitingDocs = newAllDocs.filter(
-              (doc) => doc.status === 'waiting'
-            );
-            const finishedDocs = newAllDocs.filter(
-              (doc) => doc.status !== 'waiting'
-            );
-            this.waitingTotalItems.set(waitingDocs.length);
-            this.finishedTotalItems.set(finishedDocs.length);
-
-            // Tìm tài liệu trong danh sách đã sắp xếp của finished
-            const sortedFinishedDocs = finishedDocs.sort((a, b) => {
-              const numA =
-                typeof a.documentNumber === 'string'
-                  ? parseInt(a.documentNumber.replace(/\D/g, ''))
-                  : a.documentNumber;
-              const numB =
-                typeof b.documentNumber === 'string'
-                  ? parseInt(b.documentNumber.replace(/\D/g, ''))
-                  : b.documentNumber;
-              return numA - numB;
-            });
-
-            // Tìm vị trí của tài liệu trong danh sách đã sắp xếp
-            const docPositionInSorted = sortedFinishedDocs.findIndex(
-              (doc) => doc.id === document.id
-            );
-
-            // Tính toán trang chứa tài liệu dựa trên kích thước trang
-            if (docPositionInSorted !== -1) {
-              const targetPage = Math.floor(
-                docPositionInSorted / this.finishedPageSize()
-              );
-              this.finishedCurrentPage.set(targetPage);
-            } else {
-              // Nếu không tìm thấy, mặc định về trang đầu tiên
-              this.finishedCurrentPage.set(0);
-            }
-
-            // Hiển thị thông báo thành công
-            this.messageService.add({
-              severity: 'success',
-              summary: 'Thành công',
-              detail: `Tài liệu số ${document.documentNumber} đã được kết thúc`,
-            });
-          }
-        },
-        error: (error) => {
-          console.error('Lỗi khi cập nhật trạng thái:', error);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Lỗi',
-            detail:
-              'Không thể cập nhật trạng thái tài liệu. Vui lòng thử lại sau.',
-          });
-        },
-      });
-  }
   onChange(event: string) {
-    console.log('Đã chọn giá trị: ', event);
     this.selectedOption.set(event);
   }
+
   confirmMove() {
-    /* 
-      Call patch api 
-    */
     const selectedValue = this.selectedOption();
-    console.log('Giá trị đã chọn khi xác nhận:', selectedValue);
-    
     const document = this.selectedDocument();
-    console.log(document, 999);
+    
     if (!document) {
       this.messageService.add({
         severity: 'error',
         summary: 'Lỗi',
-        detail: 'Không tìm thấy tài liệu để cập nhật',
+        detail: 'Không tìm thấy văn bản để cập nhật',
       });
       this.dialog.closeAll();
       return;
     }
     
-    console.log(`Cập nhật tài liệu số: ${document.documentNumber}`);
-    
-    // Xác định loại tài liệu dựa trên toggle hiện tại
+    // Determine document type based on current toggle
     const isIncoming = this.value() === 'incomingDocuments';
     
-    // Gọi API để cập nhật trạng thái và người nhận nội bộ
+    // Call API to update document status and internal recipient
     this.documentService
       .updateDocument(document.documentNumber, {
         status: 'finished',
@@ -378,82 +134,18 @@ export class HomeComponent implements OnInit {
       }, isIncoming)
       .subscribe({
         next: (response: any) => {
-          // Xử lý khi API thành công
-          
-          // Cập nhật UI tương tự như trong finishDocument
-          const allDocs = this.allDocuments();
-          const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
-
-          if (docIndex !== -1) {
-            // Thay đổi trạng thái từ "waiting" sang "finished"
-            const updatedDoc = { 
-              ...allDocs[docIndex], 
-              status: 'finished',
-              internalRecipient: selectedValue
-            };
-
-            // Cập nhật mảng allDocuments với tài liệu đã có trạng thái mới
-            const newAllDocs = [...allDocs];
-            newAllDocs[docIndex] = updatedDoc;
-
-            // Gán lại mảng mới cho signal allDocuments
-            this.allDocuments.set(newAllDocs);
-
-            // Lưu ID của tài liệu vừa được chuyển để highlight
-            this.recentlyFinishedDoc.set(document.id);
-
-            // Cập nhật tổng số tài liệu trong pagination
-            const waitingDocs = newAllDocs.filter(
-              (doc) => doc.status === 'waiting'
-            );
-            const finishedDocs = newAllDocs.filter(
-              (doc) => doc.status !== 'waiting'
-            );
-            this.waitingTotalItems.set(waitingDocs.length);
-            this.finishedTotalItems.set(finishedDocs.length);
-
-            // Tìm tài liệu trong danh sách đã sắp xếp của finished
-            const sortedFinishedDocs = finishedDocs.sort((a, b) => {
-              const numA =
-                typeof a.documentNumber === 'string'
-                  ? parseInt(a.documentNumber.replace(/\D/g, ''))
-                  : a.documentNumber;
-              const numB =
-                typeof b.documentNumber === 'string'
-                  ? parseInt(b.documentNumber.replace(/\D/g, ''))
-                  : b.documentNumber;
-              return numA - numB;
-            });
-
-            // Tìm vị trí của tài liệu trong danh sách đã sắp xếp
-            const docPositionInSorted = sortedFinishedDocs.findIndex(
-              (doc) => doc.id === document.id
-            );
-
-            // Tính toán trang chứa tài liệu dựa trên kích thước trang
-            if (docPositionInSorted !== -1) {
-              const targetPage = Math.floor(
-                docPositionInSorted / this.finishedPageSize()
-              );
-              this.finishedCurrentPage.set(targetPage);
-            } else {
-              // Nếu không tìm thấy, mặc định về trang đầu tiên
-              this.finishedCurrentPage.set(0);
-            }
-          }
-          
           this.messageService.add({
             severity: 'success',
             summary: 'Thành công',
-            detail: `Đã cập nhật tài liệu số ${document.documentNumber}`,
+            detail: `Đã cập nhật văn bản số ${document.documentNumber}`,
           });
         },
         error: (error: any) => {
-          console.error('Lỗi khi cập nhật tài liệu:', error);
+          console.error('Lỗi khi cập nhật văn bản:', error);
           this.messageService.add({
             severity: 'error',
             summary: 'Lỗi',
-            detail: 'Không thể cập nhật tài liệu. Vui lòng thử lại sau.',
+            detail: 'Không thể cập nhật văn bản. Vui lòng thử lại sau.',
           });
         },
         complete: () => {

@@ -18,27 +18,16 @@
     </div>
   </div>
 
-  <app-waiting-document
-    [waitingDocuments]="waitingDocuments()"
-    [columns]="waitingColumns()"
-    [currentPage]="waitingCurrentPage()"
-    [pageSize]="waitingPageSize()"
-    [totalItems]="waitingTotalItems()"
-    (pageChanged)="handleWaitingPageEvent($event)"
-    (openDialog)="openDialog($event)"
-    (finishDocument)="finishDocument($event)"
-  ></app-waiting-document>
-
-  <app-finished-document
-    [finishedDocuments]="finishedDocuments()"
-    [columns]="finishedColumns()"
-    [currentPage]="finishedCurrentPage()"
-    [pageSize]="finishedPageSize()"
-    [totalItems]="finishedTotalItems()"
-    [recentlyFinishedDocId]="recentlyFinishedDoc()"
-    (pageChanged)="handleFinishedPageEvent($event)"
-    (openDialog)="openDialog($event)"
-  ></app-finished-document>
+  <!-- Conditionally show either incoming or outgoing document component -->
+  @if(value() === 'incomingDocuments') {
+    <app-incoming-document
+      (openMoveDialog)="openDialog($event)"
+    ></app-incoming-document>
+  } @else {
+    <app-outgoing-document
+      (openMoveDialog)="openDialog($event)"
+    ></app-outgoing-document>
+  }
 </div>
 
 @if(this.httpClient.loading()) {
