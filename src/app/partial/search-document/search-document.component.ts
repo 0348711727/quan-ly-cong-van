@@ -17,7 +17,11 @@ import { MatTableModule } from '@angular/material/table';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, filter, switchMap, tap } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BehaviorSubject } from 'rxjs';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
 import { CcDatePickerComponent } from '../../commons/cc-date-picker/cc-date-picker.component';
 import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
@@ -26,12 +30,15 @@ import {
   DocumentService,
   SearchParams,
 } from '../../services/document.service';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, filter, switchMap, tap, catchError, of } from 'rxjs';
 import { HttpClientService } from '../../services/http-client.service';
 import { MatDialog } from '@angular/material/dialog';
+import { environment } from '../../../environments/environment';
 
+// Definir DocumentTypeValues como fallback si no está disponible
+const DocumentTypeValues = [
+  { value: 'incoming', label: 'Incoming Document' },
+  { value: 'outgoing', label: 'Outgoing Document' },
+];
 
 // Interfaz extendida para uso local
 interface SearchResultDocument {
@@ -195,9 +202,19 @@ export class SearchDocumentComponent implements OnInit {
         const searchType = this.searchForm.get('searchType')?.value;
         const filters = this.searchForm.get('filters')?.value;
 
+        // Crear un objeto SearchParams válido para pasar a los métodos de búsqueda
+        const searchParams: SearchParams = {
+          documentType: filters?.documentType || 'incoming',
+          author: filters?.author || '',
+          issuedDateFrom: filters?.issueDate || '',
+          issuedDateTo: filters?.expirationDate || '',
+          referenceNumber: filters?.documentNumber || '',
+          summary: query || ''
+        };
+
         if (searchType === 'incoming') {
           console.log('Searching incoming documents with query:', query);
-          return this.documentService.searchIncomingDocuments$(query, filters).pipe(
+          return this.documentService.searchIncomingDocuments$(searchParams).pipe(
             catchError((error) => {
               console.error('Error searching incoming documents:', error);
               return of([]);
@@ -205,7 +222,7 @@ export class SearchDocumentComponent implements OnInit {
           );
         } else if (searchType === 'outgoing') {
           console.log('Searching outgoing documents with query:', query);
-          return this.documentService.searchOutgoingDocuments$(query, filters).pipe(
+          return this.documentService.searchOutgoingDocuments$(searchParams).pipe(
             catchError((error) => {
               console.error('Error searching outgoing documents:', error);
               return of([]);
@@ -213,7 +230,8 @@ export class SearchDocumentComponent implements OnInit {
           );
         } else {
           console.log('Searching all documents with query:', query);
-          return this.documentService.searchDocuments$(query, filters).pipe(
+          // Como searchDocuments$ no existe, usamos searchIncomingDocuments$ como alternativa
+          return this.documentService.searchIncomingDocuments$(searchParams).pipe(
             catchError((error) => {
               console.error('Error searching all documents:', error);
               return of([]);
@@ -224,7 +242,8 @@ export class SearchDocumentComponent implements OnInit {
       tap((results) => {
         console.log('Search results:', results);
         this.isLoading.set(false);
-        this.results.set(results);
+        // Asegurar que results es un array antes de asignarlo
+        this.results.set(Array.isArray(results) ? results : []);
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe();
@@ -451,27 +470,80 @@ export class SearchDocumentComponent implements OnInit {
     }
   }
 
-  downloadAttachment(filename: string) {
-    const { documentType } = this.searchParams();
-    this.documentService.downloadAttachment$(filename, documentType).subscribe({
-      next: (blob: any) => {
-        // Create URL for blob and download
-        const url = window.URL.createObjectURL(blob);
-        const a = window.document.createElement('a');
-        a.href = url;
-        a.download = this.getShortFileName(filename); // Use shorter name
-        window.document.body.appendChild(a);
-        a.click();
+  // Función estándar para descargar archivos adjuntos
+  downloadAttachment(param1: string | number, param2?: number | string, param3?: string) {
+    this.showNoAttachmentsMessage.set(false);
+    
+    if (typeof param1 === 'number' && typeof param2 === 'number') {
+      // Caso donde param1 es documentId (number) y param2 es attachmentId (number)
+      const documentId = param1;
+      const attachmentId = param2;
+      const filename = param3 || '';
+      
+      console.log(`Downloading attachment ${attachmentId} for document ${documentId}`);
+      
+      if (!attachmentId) {
+        console.log('No attachment ID provided');
+        this.showNoAttachmentsMessage.set(true);
+        return;
+      }
+      
+      // La API espera un filename, usamos 'temp' + attachmentId como valor por defecto
+      const filenameToUse = `temp_${attachmentId}`;
+      
+      this.documentService.downloadAttachment$(filenameToUse, 'incoming')
+        .pipe(
+          takeUntilDestroyed(this.destroyRef),
+          catchError((error) => {
+            console.error('Error downloading attachment:', error);
+            alert('Error downloading the attachment. Please try again.');
+            return of(null);
+          })
+        )
+        .subscribe((response: any) => {
+          if (!response) return;
+          
+          console.log('Download successful');
+          
+          // Create blob from the response data
+          const blob = new Blob([response], { type: 'application/octet-stream' });
+          
+          // Create a download link and trigger the download
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename || `attachment-${attachmentId}.pdf`;
+          link.click();
+          
+          // Clean up
+          window.URL.revokeObjectURL(url);
+        });
+    } 
+    else if (typeof param1 === 'string') {
+      // Caso original: param1 es filename (string), param2 es documentType (opcional)
+      const filename = param1;
+      const documentType = typeof param2 === 'string' ? param2 : this.searchParams().documentType;
+      
+      this.documentService.downloadAttachment$(filename, documentType).subscribe({
+        next: (blob: any) => {
+          // Create URL for blob and download
+          const url = window.URL.createObjectURL(blob);
+          const a = window.document.createElement('a');
+          a.href = url;
+          a.download = this.getShortFileName(filename); // Use shorter name
+          window.document.body.appendChild(a);
+          a.click();
 
-        // Cleanup
-        window.URL.revokeObjectURL(url);
-        window.document.body.removeChild(a);
-      },
-      error: (error) => {
-        console.error('Error downloading attachment', error);
-        alert('Unable to download attachment. Please try again later.');
-      },
-    });
+          // Cleanup
+          window.URL.revokeObjectURL(url);
+          window.document.body.removeChild(a);
+        },
+        error: (error) => {
+          console.error('Error downloading attachment', error);
+          alert('Unable to download attachment. Please try again later.');
+        },
+      });
+    }
   }
 
   /**
@@ -493,52 +565,52 @@ export class SearchDocumentComponent implements OnInit {
   }
 
   /**
-   * Chuyển đổi chuỗi ngày từ định dạng DD/MM/YYYY hoặc ISO sang đối tượng Date
-   * Phương thức này giúp xử lý đúng định dạng ngày từ nhiều nguồn khác nhau
+   * Convert date string from DD/MM/YYYY or ISO format to Date object
+   * This method helps handle dates correctly from different sources
    */
   formatDate(dateString: string | Date): Date | null {
     if (!dateString) return null;
 
-    // Kiểm tra nếu đã là đối tượng Date
+    // Check if it's already a Date object
     if (dateString instanceof Date) return dateString;
 
-    // Thử xử lý với định dạng DD/MM/YYYY
+    // Try parsing DD/MM/YYYY format
     if (typeof dateString === 'string' && dateString.includes('/')) {
       const parts = dateString.split('/');
       if (parts.length === 3) {
-        // Lưu ý: Tháng trong JavaScript bắt đầu từ 0, nên cần trừ 1
+        // Note: Month in JavaScript starts from 0, so subtract 1
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10) - 1;
         const year = parseInt(parts[2], 10);
 
-        // Kiểm tra tính hợp lệ của ngày tháng
+        // Validate date components
         if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
           try {
             const date = new Date(year, month, day);
             if (isNaN(date.getTime())) return null;
             return date;
           } catch (e) {
-            console.error('Lỗi xử lý ngày tháng:', e);
+            console.error('Error processing date:', e);
             return null;
           }
         }
       }
     }
 
-    // Thử xử lý ngày ISO hoặc các định dạng khác
+    // Try parsing ISO or other formats
     try {
       const date = new Date(dateString);
       return isNaN(date.getTime()) ? null : date;
     } catch (e) {
-      console.error('Lỗi xử lý ngày tháng:', e);
+      console.error('Error processing date:', e);
       return null;
     }
   }
 
   /**
-   * Cập nhật một trường trong searchParams
-   * @param field Tên trường cần cập nhật
-   * @param value Giá trị mới
+   * Update a field in searchParams
+   * @param field Field name to update
+   * @param value New value
    */
   updateSearchParam(field: string, value: any) {
     try {
@@ -547,17 +619,17 @@ export class SearchDocumentComponent implements OnInit {
 
       updatedParams[field] = value;
 
-      // Cập nhật signal searchParams
+      // Update searchParams signal
       this.searchParams.set(updatedParams as SearchParams);
 
-      // Nếu thay đổi loại văn bản
+      // If document type changes
       if (field === 'documentType') {
-        // Cập nhật các cột hiển thị
+        // Update displayed columns
         this.displayedColumns.set(
           value === 'incoming' ? this.incomingColumns : this.outgoingColumns
         );
 
-        // Reset bảng kết quả
+        // Reset results table
         this.documents.set([]);
         this.hasSearched = false;
 
@@ -573,7 +645,7 @@ export class SearchDocumentComponent implements OnInit {
   }
 
   /**
-   * Debug helper para verificar la estructura de los documentos recibidos
+   * Debug helper to verify the structure of received documents
    */
   private debugDocumentStructure(documents: any[]) {
     if (!documents || documents.length === 0) {
@@ -590,13 +662,13 @@ export class SearchDocumentComponent implements OnInit {
       referenceNumber: firstDoc.referenceNumber,
       author: firstDoc.author,
       summary: firstDoc.summary,
-      // Verificar tipos de datos
+      // Verify data types
       issuedDateType: typeof firstDoc.issuedDate,
       authorType: typeof firstDoc.author,
       summaryType: typeof firstDoc.summary
     });
     
-    // Verificar formatos de fecha
+    // Verify date formats
     if (firstDoc.issuedDate) {
       console.log('issuedDate format:', firstDoc.issuedDate);
     }
@@ -608,55 +680,18 @@ export class SearchDocumentComponent implements OnInit {
     }
   }
 
-  downloadAttachment(documentId: number, attachmentId: number, filename: string) {
-    this.showNoAttachmentsMessage.set(false);
-    
-    if (!attachmentId) {
-      console.log('No attachment ID provided');
-      this.showNoAttachmentsMessage.set(true);
-      return;
-    }
-
-    console.log(`Downloading attachment ${attachmentId} for document ${documentId}`);
-    
-    this.documentService.downloadAttachment$(documentId, attachmentId)
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        catchError((error) => {
-          console.error('Error downloading attachment:', error);
-          alert('Error downloading the attachment. Please try again.');
-          return of(null);
-        })
-      )
-      .subscribe((response: any) => {
-        if (!response) return;
-        
-        console.log('Download successful');
-        
-        // Create blob from the response data
-        const blob = new Blob([response], { type: 'application/octet-stream' });
-        
-        // Create a download link and trigger the download
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename || `attachment-${attachmentId}.pdf`;
-        link.click();
-        
-        // Clean up
-        window.URL.revokeObjectURL(url);
-      });
-  }
-
   openDocument(document: any) {
     const isIncoming = document.hasOwnProperty('sender');
     
     console.log(`Opening ${isIncoming ? 'incoming' : 'outgoing'} document:`, document);
     
+    // Usar la URL base del environment, y si no existe, usar una ruta relativa
+    const baseUrl = environment.RESOURCE_URL || '';
+    
     if (isIncoming) {
-      window.open(`${environment.baseUrl}/home/incoming/${document.id}`, '_blank');
+      window.open(`${baseUrl}/home/incoming/${document.id}`, '_blank');
     } else {
-      window.open(`${environment.baseUrl}/home/outgoing/${document.id}`, '_blank');
+      window.open(`${baseUrl}/home/outgoing/${document.id}`, '_blank');
     }
   }
 
