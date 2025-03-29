@@ -6,6 +6,7 @@ import {
   signal,
   viewChild,
   TemplateRef,
+  ViewChild,
 } from '@angular/core';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
 import { MatTableModule } from '@angular/material/table';
@@ -69,6 +70,11 @@ export class HomeComponent implements OnInit {
   // Selected document and option for moving
   selectedOption = signal<string>('management-staff'); // Default to CBQL
   selectedDocument = signal<any>(null);
+  lastMoveSuccess = signal<boolean>(false);
+  lastDocumentType = signal<string>('incoming'); // 'incoming' o 'outgoing'
+
+  // Component references
+  @ViewChild('incomingDocComponent') incomingDocComponent?: IncomingDocumentComponent;
 
   ngOnInit() {
     // No initialization needed as child components handle their own loading
@@ -95,6 +101,8 @@ export class HomeComponent implements OnInit {
     this.selectedOption.set('management-staff');
     // Store the document being processed
     this.selectedDocument.set(document);
+    // Store document type based on current toggle
+    this.lastDocumentType.set(this.value() === 'incomingDocuments' ? 'incoming' : 'outgoing');
     
     const data = {
       title: 'Chọn người chuyển',
@@ -110,6 +118,7 @@ export class HomeComponent implements OnInit {
   }
 
   confirmMove() {
+    this.lastMoveSuccess.set(false);
     const selectedValue = this.selectedOption();
     const document = this.selectedDocument();
     
@@ -123,8 +132,8 @@ export class HomeComponent implements OnInit {
       return;
     }
     
-    // Determine document type based on current toggle
-    const isIncoming = this.value() === 'incomingDocuments';
+    // Determine document type based on stored value
+    const isIncoming = this.lastDocumentType() === 'incoming';
     
     // Call API to update document status and internal recipient
     this.documentService
@@ -139,6 +148,13 @@ export class HomeComponent implements OnInit {
             summary: 'Thành công',
             detail: `Đã cập nhật văn bản số ${document.documentNumber}`,
           });
+          // Marcar como exitoso para notificar al componente hijo
+          this.lastMoveSuccess.set(true);
+          
+          // Si es un documento entrante, actualizar la interfaz
+          if (isIncoming && this.incomingDocComponent) {
+            this.incomingDocComponent.updateAfterTransfer(document);
+          }
         },
         error: (error: any) => {
           console.error('Lỗi khi cập nhật văn bản:', error);

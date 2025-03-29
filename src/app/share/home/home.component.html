@@ -21,6 +21,7 @@
   <!-- Conditionally show either incoming or outgoing document component -->
   @if(value() === 'incomingDocuments') {
     <app-incoming-document
+      #incomingDocComponent
       (openMoveDialog)="openDialog($event)"
     ></app-incoming-document>
   } @else {

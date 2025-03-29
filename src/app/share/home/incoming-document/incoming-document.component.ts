@@ -256,4 +256,61 @@ export class IncomingDocumentComponent implements OnInit {
         },
       });
   }
+
+  // Método para actualizar la lista después de transferir un documento
+  updateAfterTransfer(document: any) {
+    const allDocs = this.allDocuments();
+    const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
+
+    if (docIndex !== -1) {
+      // Cambiar el estado de "waiting" a "finished"
+      const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
+
+      // Actualizar el array allDocuments con el documento modificado
+      const newAllDocs = [...allDocs];
+      newAllDocs[docIndex] = updatedDoc;
+
+      // Asignar el nuevo array al signal allDocuments
+      this.allDocuments.set(newAllDocs);
+
+      // Guardar el ID del documento recién transferido para resaltarlo
+      this.recentlyFinishedDoc.set(document.id);
+
+      // Actualizar el total de elementos en pagination
+      const waitingDocs = newAllDocs.filter(
+        (doc) => doc.status === 'waiting'
+      );
+      const finishedDocs = newAllDocs.filter(
+        (doc) => doc.status !== 'waiting'
+      );
+      this.waitingTotalItems.set(waitingDocs.length);
+      this.finishedTotalItems.set(finishedDocs.length);
+
+      // Encontrar el documento en la lista ordenada de documentos finalizados
+      const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+        const numA =
+          typeof a.documentNumber === 'string'
+            ? parseInt(a.documentNumber.replace(/\D/g, ''))
+            : a.documentNumber;
+        const numB =
+          typeof b.documentNumber === 'string'
+            ? parseInt(b.documentNumber.replace(/\D/g, ''))
+            : b.documentNumber;
+        return numA - numB;
+      });
+
+      // Encontrar la posición del documento en la lista ordenada
+      const docPositionInSorted = sortedFinishedDocs.findIndex(
+        (doc) => doc.id === document.id
+      );
+
+      // Calcular la página que contiene el documento según el tamaño de página
+      if (docPositionInSorted !== -1) {
+        const targetPage = Math.floor(
+          docPositionInSorted / this.finishedPageSize()
+        );
+        this.finishedCurrentPage.set(targetPage);
+      }
+    }
+  }
 } 
