@@ -73,7 +73,12 @@
     </ng-container>
 
     <tr mat-header-row *matHeaderRowDef="waitingColumns()"></tr>
-    <tr mat-row *matRowDef="let row; columns: waitingColumns()"></tr>
+    <tr
+      mat-row
+      *matRowDef="let row; columns: waitingColumns()"
+      [ngClass]="{ 'highlight-row': row.id === recentlyRecoveredDoc() }"
+      [id]="'doc-' + row.id"
+    ></tr>
   </table>
 
   @if(waitingDocuments().length === 0) {

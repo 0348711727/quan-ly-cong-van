@@ -119,6 +119,9 @@ export class OutgoingDocumentComponent implements OnInit {
   // Signal for highlighting recently finished document
   recentlyFinishedDoc = signal<string | null>(null);
 
+  // Signal for highlighting recently recovered document
+  recentlyRecoveredDoc = signal<string | null>(null);
+
   // Constants
   MOVE_CV = MOVE_CV;
 
@@ -376,19 +379,90 @@ export class OutgoingDocumentComponent implements OnInit {
 
   // Método para recuperar un documento
   recoverDocument(document: any) {
-    // Cambiar el estado del documento de 'finished' a 'waiting'
+    console.log(`Recuperando documento ${document.documentNumber}...`);
+    
+    // Actualizar estado en el servidor
     this.documentService
       .updateDocumentStatus(document.documentNumber, 'waiting', false)
       .subscribe({
         next: (response: any) => {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Thành công',
-            detail: `Đã lấy lại văn bản số ${document.documentNumber}`,
-          });
+          console.log('Respuesta del servidor:', response);
           
-          // Recargar documentos después de recuperar
-          this.loadOutgoingDocuments();
+          // Una vez actualizado en el servidor, procedemos a actualizar la UI
+          const allDocs = this.allDocuments();
+          const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
+
+          if (docIndex !== -1) {
+            // Cambiar el estado de "finished" a "waiting"
+            const updatedDoc = { ...allDocs[docIndex], status: 'waiting' };
+
+            // Actualizar el array allDocuments con el documento modificado
+            const newAllDocs = [...allDocs];
+            newAllDocs[docIndex] = updatedDoc;
+
+            // Asignar el nuevo array al signal allDocuments
+            this.allDocuments.set(newAllDocs);
+
+            // Guardar el ID del documento recién recuperado para resaltarlo
+            this.recentlyRecoveredDoc.set(document.id);
+            
+            // Quitar resaltado después de 3 segundos
+            setTimeout(() => {
+              this.recentlyRecoveredDoc.set(null);
+            }, 3000);
+
+            // Actualizar el total de elementos en pagination
+            const waitingDocs = newAllDocs.filter(
+              (doc) => doc.status === 'waiting'
+            );
+            const finishedDocs = newAllDocs.filter(
+              (doc) => doc.status !== 'waiting'
+            );
+            this.waitingTotalItems.set(waitingDocs.length);
+            this.finishedTotalItems.set(finishedDocs.length);
+
+            // Encontrar el documento en la lista ordenada de documentos en espera
+            const sortedWaitingDocs = waitingDocs.sort((a, b) => {
+              const numA =
+                typeof a.documentNumber === 'string'
+                  ? parseInt(a.documentNumber.replace(/\D/g, ''))
+                  : a.documentNumber;
+              const numB =
+                typeof b.documentNumber === 'string'
+                  ? parseInt(b.documentNumber.replace(/\D/g, ''))
+                  : b.documentNumber;
+              return numA - numB;
+            });
+
+            // Encontrar la posición del documento en la lista ordenada
+            const docPositionInSorted = sortedWaitingDocs.findIndex(
+              (doc) => doc.id === document.id
+            );
+
+            // Calcular la página que contiene el documento según el tamaño de página
+            if (docPositionInSorted !== -1) {
+              const targetPage = Math.floor(
+                docPositionInSorted / this.waitingPageSize()
+              );
+              this.waitingCurrentPage.set(targetPage);
+            }
+
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Thành công',
+              detail: `Đã lấy lại văn bản số ${document.documentNumber}`,
+            });
+          } else {
+            // Si no encontramos el documento en nuestro estado local, recargamos todos los documentos
+            console.log('Documento no encontrado en estado local, recargando...');
+            this.loadOutgoingDocuments();
+            
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Thành công',
+              detail: `Đã lấy lại văn bản số ${document.documentNumber}`,
+            });
+          }
         },
         error: (error) => {
           console.error('Lỗi khi lấy lại văn bản:', error);
@@ -397,7 +471,7 @@ export class OutgoingDocumentComponent implements OnInit {
             summary: 'Lỗi',
             detail: 'Không thể lấy lại văn bản. Vui lòng thử lại sau.',
           });
-        },
+        }
       });
   }
 } 
