@@ -20,10 +20,29 @@ import { CcDatePickerComponent } from '../../commons/cc-date-picker/cc-date-pick
 import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
 import { CcSelectComponent } from '../../commons/cc-select/cc-select.component';
 import {
-  Document,
   DocumentService,
   SearchParams,
 } from '../../services/document.service';
+
+// Interfaz extendida para uso local
+interface SearchResultDocument {
+  id: number;
+  documentNumber?: string;
+  receivedDate?: string;
+  issuedDate: string; // La fecha original como cadena
+  referenceNumber: string;
+  author: string;
+  summary: string;
+  priority?: string;
+  dueDate?: string;
+  type?: string;
+  receivingMethod?: string;
+  attachments?: string[];
+  processingOpinion?: string;
+  status?: string;
+  // Para ordenamiento
+  issuedDateObj?: Date | null;
+}
 
 // Type for the entire response
 interface SearchDataResponse {
@@ -33,26 +52,8 @@ interface SearchDataResponse {
 
 // Type for the "data" property
 interface DocumentData {
-  documents: DocumentResponse[];
+  documents: SearchResultDocument[];
   pagination: Pagination;
-}
-
-// Type for each document in the "documents" array
-interface DocumentResponse {
-  id: number;
-  documentNumber: string;
-  receivedDate: string; // Format: "DD/MM/YYYY"
-  issuedDate: string; // Format: "DD/MM/YYYY"
-  referenceNumber: string;
-  author: string;
-  summary: string;
-  priority: string; // Example values: "Normal", "High", etc.
-  dueDate: string; // Format: "YYYY-MM-DD"
-  type: string; // Example values: "Paper", "Digital", etc.
-  receivingMethod: string; // Example values: "Paper letter", "Email", etc.
-  attachments: string[]; // Array of attachment file names
-  processingOpinion: string;
-  status: string; // Example values could include statuses like "Pending", "Completed", etc.
 }
 
 // Type for the pagination information
@@ -88,7 +89,7 @@ export class SearchDocumentComponent implements OnInit {
   searchParams: WritableSignal<SearchParams> = signal({
     documentType: 'incoming',
   });
-  documents: WritableSignal<Document[]> = signal([]);
+  documents: WritableSignal<SearchResultDocument[]> = signal([]);
   loading: WritableSignal<boolean> = signal(false);
   hasSearched: boolean = false;
 
@@ -159,6 +160,7 @@ export class SearchDocumentComponent implements OnInit {
       pageSize: this.pageSize(),
     };
 
+    console.log('Parámetros de búsqueda enviados:', searchParams);
     this.handleSearch(searchParams);
   }
 
@@ -166,8 +168,10 @@ export class SearchDocumentComponent implements OnInit {
     searchParams: any,
     searchFunction: (params: any) => Observable<any>
   ) {
+    console.log('Llamando a searchDocuments con parámetros:', searchParams);
     searchFunction(searchParams).subscribe({
       next: (response: any) => {
+        console.log('Respuesta de búsqueda recibida:', response);
         const {
           data: { documents, pagination },
         } = response as SearchDataResponse;
@@ -175,10 +179,23 @@ export class SearchDocumentComponent implements OnInit {
         // Update pagination information
         this.totalItems.set(pagination.totalItems);
 
-        const docs = (documents as DocumentResponse[]).map((doc) => ({
-          ...doc,
-          issuedDate: this.formatDate(doc.issuedDate),
-        }));
+        console.log('Documentos recibidos:', documents);
+        
+        // Verificar la estructura de los documentos recibidos 
+        this.debugDocumentStructure(documents);
+        
+        // Mantener las fechas como strings para visualización, pero añadir propiedades adicionales para ordenamiento
+        const docs = (documents as SearchResultDocument[]).map((doc) => {
+          // Crear una copia del documento
+          const docCopy = { ...doc };
+          
+          // Crear un objeto Date solo para ordenamiento (no para visualización)
+          docCopy.issuedDateObj = this.formatDate(doc.issuedDate);
+          
+          return docCopy;
+        });
+        
+        console.log('Documentos procesados:', docs);
         this.documents.set(docs);
 
         // Sort documents by issuedDate
@@ -197,6 +214,7 @@ export class SearchDocumentComponent implements OnInit {
   }
 
   public handleSearch(searchParams: any) {
+    console.log('Tipo de documento a buscar:', searchParams.documentType);
     if (searchParams.documentType === 'incoming') {
       this.searchDocuments(
         searchParams,
@@ -228,24 +246,15 @@ export class SearchDocumentComponent implements OnInit {
   sortDocumentsByIssuedDate() {
     try {
       this.documents.set(
-        [...this.documents()].sort((a, b) => {
+        [...this.documents()].sort((a: any, b: any) => {
           // Xử lý trường hợp một trong hai tài liệu không có ngày văn bản
-          if (!a.issuedDate) return 1; // Đẩy các tài liệu không có ngày xuống cuối
-          if (!b.issuedDate) return -1;
+          if (!a.issuedDateObj) return 1; // Đẩy các tài liệu không có ngày xuống cuối
+          if (!b.issuedDateObj) return -1;
 
-          // So sánh hai ngày
+          // So sánh hai ngày usando los objetos Date
           try {
-            // Lấy thời gian từ Date objects hoặc chuỗi ngày
-            const getTimeValue = (date: any): number => {
-              if (date && typeof date === 'object' && 'getTime' in date) {
-                return date.getTime();
-              } else {
-                return new Date(date).getTime();
-              }
-            };
-
-            const dateA = getTimeValue(a.issuedDate);
-            const dateB = getTimeValue(b.issuedDate);
+            const dateA = a.issuedDateObj?.getTime() || 0;
+            const dateB = b.issuedDateObj?.getTime() || 0;
 
             if (isNaN(dateA) && isNaN(dateB)) return 0;
             if (isNaN(dateA)) return 1;
@@ -438,6 +447,42 @@ export class SearchDocumentComponent implements OnInit {
       console.log('Updated search params:', updatedParams);
     } catch (error) {
       console.error('Error updating search param:', error);
+    }
+  }
+
+  /**
+   * Debug helper para verificar la estructura de los documentos recibidos
+   */
+  private debugDocumentStructure(documents: any[]) {
+    if (!documents || documents.length === 0) {
+      console.log('No hay documentos para depurar');
+      return;
+    }
+    
+    const firstDoc = documents[0];
+    console.log('Estructura del primer documento:', {
+      id: firstDoc.id,
+      documentNumber: firstDoc.documentNumber,
+      receivedDate: firstDoc.receivedDate,
+      issuedDate: firstDoc.issuedDate,
+      referenceNumber: firstDoc.referenceNumber,
+      author: firstDoc.author,
+      summary: firstDoc.summary,
+      // Verificar tipos de datos
+      issuedDateType: typeof firstDoc.issuedDate,
+      authorType: typeof firstDoc.author,
+      summaryType: typeof firstDoc.summary
+    });
+    
+    // Verificar formatos de fecha
+    if (firstDoc.issuedDate) {
+      console.log('Formato de issuedDate:', firstDoc.issuedDate);
+    }
+    if (firstDoc.receivedDate) {
+      console.log('Formato de receivedDate:', firstDoc.receivedDate);
+    }
+    if (firstDoc.dueDate) {
+      console.log('Formato de dueDate:', firstDoc.dueDate);
     }
   }
 }
