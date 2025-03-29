@@ -6,6 +6,9 @@ import {
   signal,
   ViewChild,
   WritableSignal,
+  ChangeDetectionStrategy,
+  computed,
+  DestroyRef,
 } from '@angular/core';
 import { MatLabel } from '@angular/material/form-field';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -23,6 +26,12 @@ import {
   DocumentService,
   SearchParams,
 } from '../../services/document.service';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, filter, switchMap, tap, catchError, of } from 'rxjs';
+import { HttpClientService } from '../../services/http-client.service';
+import { MatDialog } from '@angular/material/dialog';
+
 
 // Interfaz extendida para uso local
 interface SearchResultDocument {
@@ -80,12 +89,19 @@ interface Pagination {
     TooltipModule,
     MatPaginatorModule,
     CcSelectComponent,
+    ReactiveFormsModule,
   ],
   templateUrl: './search-document.component.html',
   styleUrl: './search-document.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SearchDocumentComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   protected documentService = inject(DocumentService);
+  private fb = inject(FormBuilder);
+  private http = inject(HttpClientService);
+  dialog = inject(MatDialog);
+
   searchParams: WritableSignal<SearchParams> = signal({
     documentType: 'incoming',
   });
@@ -133,10 +149,122 @@ export class SearchDocumentComponent implements OnInit {
   @ViewChild('inputAuthor') inputAuthor!: CcInputComponent;
   @ViewChild('inputSummary') inputSummary!: CcInputComponent;
 
+  readonly searchTypes = [
+    { value: 'all', label: 'All' },
+    { value: 'incoming', label: 'Incoming' },
+    { value: 'outgoing', label: 'Outgoing' }
+  ];
+
+  readonly documentTypes = DocumentTypeValues;
+
+  private searchSubject = new BehaviorSubject<string>('');
+
+  public searchForm: FormGroup = this.fb.group({
+    searchType: ['all'],
+    query: [''],
+    filters: this.fb.group({
+      documentType: [''],
+      issueDate: [''],
+      expirationDate: [''],
+      status: [''],
+      receivedDate: [''],
+      documentNumber: [''],
+      signer: ['']
+    })
+  });
+
+  isLoading = signal<boolean>(false);
+  results = signal<any[]>([]);
+  emptyResults = computed(() => this.results().length === 0);
+  showNoAttachmentsMessage = signal<boolean>(false);
+
   ngOnInit() {
     if (this.selectDocumentType) {
       this.selectDocumentType.value = 'incoming';
     }
+
+    this.searchSubject.pipe(
+      filter((query) => !!query),
+      debounceTime(300),
+      distinctUntilChanged(),
+      tap(() => {
+        console.log('Processing search query...');
+        this.isLoading.set(true);
+      }),
+      switchMap((query) => {
+        const searchType = this.searchForm.get('searchType')?.value;
+        const filters = this.searchForm.get('filters')?.value;
+
+        if (searchType === 'incoming') {
+          console.log('Searching incoming documents with query:', query);
+          return this.documentService.searchIncomingDocuments$(query, filters).pipe(
+            catchError((error) => {
+              console.error('Error searching incoming documents:', error);
+              return of([]);
+            })
+          );
+        } else if (searchType === 'outgoing') {
+          console.log('Searching outgoing documents with query:', query);
+          return this.documentService.searchOutgoingDocuments$(query, filters).pipe(
+            catchError((error) => {
+              console.error('Error searching outgoing documents:', error);
+              return of([]);
+            })
+          );
+        } else {
+          console.log('Searching all documents with query:', query);
+          return this.documentService.searchDocuments$(query, filters).pipe(
+            catchError((error) => {
+              console.error('Error searching all documents:', error);
+              return of([]);
+            })
+          );
+        }
+      }),
+      tap((results) => {
+        console.log('Search results:', results);
+        this.isLoading.set(false);
+        this.results.set(results);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+
+    // Monitor form changes
+    this.searchForm.get('query')?.valueChanges.pipe(
+      tap((value) => {
+        console.log('Search query changed:', value);
+        if (value?.trim()) {
+          this.searchSubject.next(value);
+        } else {
+          this.results.set([]);
+        }
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+
+    this.searchForm.get('searchType')?.valueChanges.pipe(
+      tap((value) => {
+        console.log('Search type changed:', value);
+        const query = this.searchForm.get('query')?.value;
+        if (query?.trim()) {
+          this.searchSubject.next(query);
+        }
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+
+    // Monitor filter changes
+    this.searchForm.get('filters')?.valueChanges.pipe(
+      debounceTime(500),
+      tap((filters) => {
+        console.log('Filters changed:', filters);
+        const query = this.searchForm.get('query')?.value;
+        if (query?.trim()) {
+          this.searchSubject.next(query);
+        }
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
   }
 
   onChangeSearch() {
@@ -160,7 +288,6 @@ export class SearchDocumentComponent implements OnInit {
       pageSize: this.pageSize(),
     };
 
-    console.log('Parámetros de búsqueda enviados:', searchParams);
     this.handleSearch(searchParams);
   }
 
@@ -168,10 +295,8 @@ export class SearchDocumentComponent implements OnInit {
     searchParams: any,
     searchFunction: (params: any) => Observable<any>
   ) {
-    console.log('Llamando a searchDocuments con parámetros:', searchParams);
     searchFunction(searchParams).subscribe({
       next: (response: any) => {
-        console.log('Respuesta de búsqueda recibida:', response);
         const {
           data: { documents, pagination },
         } = response as SearchDataResponse;
@@ -179,23 +304,21 @@ export class SearchDocumentComponent implements OnInit {
         // Update pagination information
         this.totalItems.set(pagination.totalItems);
 
-        console.log('Documentos recibidos:', documents);
         
-        // Verificar la estructura de los documentos recibidos 
+        // Verify the structure of received documents 
         this.debugDocumentStructure(documents);
         
-        // Mantener las fechas como strings para visualización, pero añadir propiedades adicionales para ordenamiento
+        // Keep dates as strings for display, but add additional properties for sorting
         const docs = (documents as SearchResultDocument[]).map((doc) => {
-          // Crear una copia del documento
+          // Create a copy of the document
           const docCopy = { ...doc };
           
-          // Crear un objeto Date solo para ordenamiento (no para visualización)
+          // Create a Date object only for sorting (not for display)
           docCopy.issuedDateObj = this.formatDate(doc.issuedDate);
           
           return docCopy;
         });
         
-        console.log('Documentos procesados:', docs);
         this.documents.set(docs);
 
         // Sort documents by issuedDate
@@ -214,7 +337,6 @@ export class SearchDocumentComponent implements OnInit {
   }
 
   public handleSearch(searchParams: any) {
-    console.log('Tipo de documento a buscar:', searchParams.documentType);
     if (searchParams.documentType === 'incoming') {
       this.searchDocuments(
         searchParams,
@@ -241,17 +363,17 @@ export class SearchDocumentComponent implements OnInit {
   }
 
   /**
-   * Sắp xếp danh sách tài liệu theo ngày văn bản (issuedDate) tăng dần
+   * Sort the document list by issue date (issuedDate) in ascending order
    */
   sortDocumentsByIssuedDate() {
     try {
       this.documents.set(
         [...this.documents()].sort((a: any, b: any) => {
-          // Xử lý trường hợp một trong hai tài liệu không có ngày văn bản
-          if (!a.issuedDateObj) return 1; // Đẩy các tài liệu không có ngày xuống cuối
+          // Handle case where one of the two documents has no issue date
+          if (!a.issuedDateObj) return 1; // Push documents without dates to the end
           if (!b.issuedDateObj) return -1;
 
-          // So sánh hai ngày usando los objetos Date
+          // Compare two dates using Date objects
           try {
             const dateA = a.issuedDateObj?.getTime() || 0;
             const dateB = b.issuedDateObj?.getTime() || 0;
@@ -260,23 +382,23 @@ export class SearchDocumentComponent implements OnInit {
             if (isNaN(dateA)) return 1;
             if (isNaN(dateB)) return -1;
 
-            return dateA - dateB; // Sắp xếp tăng dần
+            return dateA - dateB; // Sort in ascending order
           } catch (e) {
-            console.error('Lỗi khi so sánh ngày:', e);
+            console.error('Error comparing dates:', e);
             return 0;
           }
         })
       );
     } catch (e) {
-      console.error('Lỗi khi sắp xếp tài liệu:', e);
+      console.error('Error sorting documents:', e);
     }
   }
 
   reset() {
-    // Xóa tất cả tham số tìm kiếm và đặt lại giá trị mặc định cho documentType
+    // Clear all search parameters and reset documentType to default value
     this.searchParams.set({ documentType: 'incoming' });
 
-    // Xóa kết quả tìm kiếm
+    // Clear search results
     this.documents.set([]);
     this.hasSearched = false;
 
@@ -284,14 +406,14 @@ export class SearchDocumentComponent implements OnInit {
     this.pageIndex.set(0);
     this.totalItems.set(0);
 
-    // Reset các trường nhập liệu
+    // Reset input fields
     try {
-      // Reset document type select về giá trị mặc định
+      // Reset document type select to default value
       if (this.selectDocumentType) {
         this.selectDocumentType.value = 'incoming';
       }
 
-      // Reset các date pickers
+      // Reset date pickers
       if (this.datePickerFrom) {
         this.datePickerFrom.writeValue('');
       }
@@ -300,7 +422,7 @@ export class SearchDocumentComponent implements OnInit {
         this.datePickerTo.writeValue('');
       }
 
-      // Reset các text inputs
+      // Reset text inputs
       if (this.inputNumber) {
         if ('writeValue' in this.inputNumber) {
           (this.inputNumber as any).writeValue('');
@@ -325,7 +447,7 @@ export class SearchDocumentComponent implements OnInit {
         }
       }
     } catch (error) {
-      console.error('Lỗi khi đặt lại form:', error);
+      console.error('Error resetting form:', error);
     }
   }
 
@@ -333,40 +455,40 @@ export class SearchDocumentComponent implements OnInit {
     const { documentType } = this.searchParams();
     this.documentService.downloadAttachment$(filename, documentType).subscribe({
       next: (blob: any) => {
-        // Tạo URL cho blob và tải xuống
+        // Create URL for blob and download
         const url = window.URL.createObjectURL(blob);
         const a = window.document.createElement('a');
         a.href = url;
-        a.download = this.getShortFileName(filename); // Sử dụng tên ngắn gọn hơn
+        a.download = this.getShortFileName(filename); // Use shorter name
         window.document.body.appendChild(a);
         a.click();
 
-        // Dọn dẹp
+        // Cleanup
         window.URL.revokeObjectURL(url);
         window.document.body.removeChild(a);
       },
       error: (error) => {
-        console.error('Lỗi khi tải tệp đính kèm', error);
-        alert('Không thể tải tệp đính kèm. Vui lòng thử lại sau.');
+        console.error('Error downloading attachment', error);
+        alert('Unable to download attachment. Please try again later.');
       },
     });
   }
 
   /**
-   * Chuyển đổi tên file từ format "1742310337699-github-recovery-codes.txt"
-   * thành dạng ngắn gọn hơn bằng cách loại bỏ timestamp ở đầu
+   * Convert filename from format "1742310337699-github-recovery-codes.txt"
+   * to shorter form by removing the timestamp at the beginning
    */
   getShortFileName(filename: string): string {
-    // Tách tên file theo dấu gạch ngang để lấy phần không chứa timestamp
+    // Split filename by hyphen to get the part without timestamp
     const parts = filename.split('-');
 
-    // Nếu có timestamp ở đầu (format chuẩn), loại bỏ nó
+    // If there is a timestamp at the beginning (standard format), remove it
     if (parts.length > 1 && !isNaN(Number(parts[0]))) {
-      // Loại bỏ phần đầu tiên (timestamp) và ghép lại các phần còn lại
+      // Remove the first part (timestamp) and join the remaining parts
       return parts.slice(1).join('-');
     }
 
-    // Nếu không đúng format hoặc không có timestamp, trả về tên gốc
+    // If not in the right format or no timestamp, return the original name
     return filename;
   }
 
@@ -455,12 +577,12 @@ export class SearchDocumentComponent implements OnInit {
    */
   private debugDocumentStructure(documents: any[]) {
     if (!documents || documents.length === 0) {
-      console.log('No hay documentos para depurar');
+      console.log('No documents to debug');
       return;
     }
     
     const firstDoc = documents[0];
-    console.log('Estructura del primer documento:', {
+    console.log('Structure of the first document:', {
       id: firstDoc.id,
       documentNumber: firstDoc.documentNumber,
       receivedDate: firstDoc.receivedDate,
@@ -476,13 +598,83 @@ export class SearchDocumentComponent implements OnInit {
     
     // Verificar formatos de fecha
     if (firstDoc.issuedDate) {
-      console.log('Formato de issuedDate:', firstDoc.issuedDate);
+      console.log('issuedDate format:', firstDoc.issuedDate);
     }
     if (firstDoc.receivedDate) {
-      console.log('Formato de receivedDate:', firstDoc.receivedDate);
+      console.log('receivedDate format:', firstDoc.receivedDate);
     }
     if (firstDoc.dueDate) {
-      console.log('Formato de dueDate:', firstDoc.dueDate);
+      console.log('dueDate format:', firstDoc.dueDate);
     }
+  }
+
+  downloadAttachment(documentId: number, attachmentId: number, filename: string) {
+    this.showNoAttachmentsMessage.set(false);
+    
+    if (!attachmentId) {
+      console.log('No attachment ID provided');
+      this.showNoAttachmentsMessage.set(true);
+      return;
+    }
+
+    console.log(`Downloading attachment ${attachmentId} for document ${documentId}`);
+    
+    this.documentService.downloadAttachment$(documentId, attachmentId)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError((error) => {
+          console.error('Error downloading attachment:', error);
+          alert('Error downloading the attachment. Please try again.');
+          return of(null);
+        })
+      )
+      .subscribe((response: any) => {
+        if (!response) return;
+        
+        console.log('Download successful');
+        
+        // Create blob from the response data
+        const blob = new Blob([response], { type: 'application/octet-stream' });
+        
+        // Create a download link and trigger the download
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename || `attachment-${attachmentId}.pdf`;
+        link.click();
+        
+        // Clean up
+        window.URL.revokeObjectURL(url);
+      });
+  }
+
+  openDocument(document: any) {
+    const isIncoming = document.hasOwnProperty('sender');
+    
+    console.log(`Opening ${isIncoming ? 'incoming' : 'outgoing'} document:`, document);
+    
+    if (isIncoming) {
+      window.open(`${environment.baseUrl}/home/incoming/${document.id}`, '_blank');
+    } else {
+      window.open(`${environment.baseUrl}/home/outgoing/${document.id}`, '_blank');
+    }
+  }
+
+  clearSearch() {
+    this.searchForm.reset({
+      searchType: 'all',
+      query: '',
+      filters: {
+        documentType: '',
+        issueDate: '',
+        expirationDate: '',
+        status: '',
+        receivedDate: '',
+        documentNumber: '',
+        signer: ''
+      }
+    });
+    this.results.set([]);
+    console.log('Search form cleared');
   }
 }

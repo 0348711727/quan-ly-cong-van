@@ -182,27 +182,19 @@ export class IncomingDocumentComponent implements OnInit {
 
   finishDocument(document: any) {
     this.documentService
-      .updateDocumentStatus(document.documentNumber, 'finished', true)
+      .updateDocumentStatus(document.documentNumber, 'finished')
       .subscribe({
         next: (response: any) => {
           const allDocs = this.allDocuments();
           const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
 
           if (docIndex !== -1) {
-            // Cambiar el estado de "waiting" a "finished"
             const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
-
-            // Actualizar el array allDocuments con el documento modificado
             const newAllDocs = [...allDocs];
             newAllDocs[docIndex] = updatedDoc;
-
-            // Asignar el nuevo array al signal allDocuments
             this.allDocuments.set(newAllDocs);
-
-            // Guardar el ID del documento recién finalizado para resaltarlo
             this.recentlyFinishedDoc.set(document.id);
 
-            // Actualizar el total de elementos en pagination
             const waitingDocs = newAllDocs.filter(
               (doc) => doc.status === 'waiting'
             );
@@ -212,7 +204,6 @@ export class IncomingDocumentComponent implements OnInit {
             this.waitingTotalItems.set(waitingDocs.length);
             this.finishedTotalItems.set(finishedDocs.length);
 
-            // Encontrar el documento en la lista ordenada de documentos finalizados
             const sortedFinishedDocs = finishedDocs.sort((a, b) => {
               const numA =
                 typeof a.documentNumber === 'string'
@@ -225,12 +216,10 @@ export class IncomingDocumentComponent implements OnInit {
               return numA - numB;
             });
 
-            // Encontrar la posición del documento en la lista ordenada
             const docPositionInSorted = sortedFinishedDocs.findIndex(
               (doc) => doc.id === document.id
             );
 
-            // Calcular la página que contiene el documento según el tamaño de página
             if (docPositionInSorted !== -1) {
               const targetPage = Math.floor(
                 docPositionInSorted / this.finishedPageSize()
@@ -257,26 +246,26 @@ export class IncomingDocumentComponent implements OnInit {
       });
   }
 
-  // Método para actualizar la lista después de transferir un documento
+  // Method to update the list after transferring a document
   updateAfterTransfer(document: any) {
     const allDocs = this.allDocuments();
     const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
 
     if (docIndex !== -1) {
-      // Cambiar el estado de "waiting" a "finished"
+      // Change status from "waiting" to "finished"
       const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
 
-      // Actualizar el array allDocuments con el documento modificado
+      // Update allDocuments array with modified document
       const newAllDocs = [...allDocs];
       newAllDocs[docIndex] = updatedDoc;
 
-      // Asignar el nuevo array al signal allDocuments
+      // Assign new array to allDocuments signal
       this.allDocuments.set(newAllDocs);
 
-      // Guardar el ID del documento recién transferido para resaltarlo
+      // Save ID of recently transferred document to highlight it
       this.recentlyFinishedDoc.set(document.id);
 
-      // Actualizar el total de elementos en pagination
+      // Update total elements in pagination
       const waitingDocs = newAllDocs.filter(
         (doc) => doc.status === 'waiting'
       );
@@ -286,7 +275,7 @@ export class IncomingDocumentComponent implements OnInit {
       this.waitingTotalItems.set(waitingDocs.length);
       this.finishedTotalItems.set(finishedDocs.length);
 
-      // Encontrar el documento en la lista ordenada de documentos finalizados
+      // Find document in sorted list of finished documents
       const sortedFinishedDocs = finishedDocs.sort((a, b) => {
         const numA =
           typeof a.documentNumber === 'string'
@@ -299,12 +288,12 @@ export class IncomingDocumentComponent implements OnInit {
         return numA - numB;
       });
 
-      // Encontrar la posición del documento en la lista ordenada
+      // Find position of document in sorted list
       const docPositionInSorted = sortedFinishedDocs.findIndex(
         (doc) => doc.id === document.id
       );
 
-      // Calcular la página que contiene el documento según el tamaño de página
+      // Calculate page containing document according to page size
       if (docPositionInSorted !== -1) {
         const targetPage = Math.floor(
           docPositionInSorted / this.finishedPageSize()

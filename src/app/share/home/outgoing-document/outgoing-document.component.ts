@@ -138,7 +138,7 @@ export class OutgoingDocumentComponent implements OnInit {
         if (response && response.data) {
           const { documents } = response.data;
 
-          // Enriquecer los documentos con información sobre adjuntos
+          // Enhance documents with attachment information
           const enhancedDocuments = documents.map((doc: any) => {
             return {
               ...doc,
@@ -196,20 +196,20 @@ export class OutgoingDocumentComponent implements OnInit {
           const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
 
           if (docIndex !== -1) {
-            // Cambiar el estado de "waiting" a "finished"
+            // Change status from "waiting" to "finished"
             const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
 
-            // Actualizar el array allDocuments con el documento modificado
+            // Update allDocuments array with the modified document
             const newAllDocs = [...allDocs];
             newAllDocs[docIndex] = updatedDoc;
 
-            // Asignar el nuevo array al signal allDocuments
+            // Assign new array to allDocuments signal
             this.allDocuments.set(newAllDocs);
 
-            // Guardar el ID del documento recién finalizado para resaltarlo
+            // Save ID of recently finished document to highlight it
             this.recentlyFinishedDoc.set(document.id);
 
-            // Actualizar el total de elementos en pagination
+            // Update total elements in pagination
             const waitingDocs = newAllDocs.filter(
               (doc) => doc.status === 'waiting'
             );
@@ -219,7 +219,7 @@ export class OutgoingDocumentComponent implements OnInit {
             this.waitingTotalItems.set(waitingDocs.length);
             this.finishedTotalItems.set(finishedDocs.length);
 
-            // Encontrar el documento en la lista ordenada de documentos finalizados
+            // Find document in sorted list of finished documents
             const sortedFinishedDocs = finishedDocs.sort((a, b) => {
               const numA =
                 typeof a.documentNumber === 'string'
@@ -232,12 +232,12 @@ export class OutgoingDocumentComponent implements OnInit {
               return numA - numB;
             });
 
-            // Encontrar la posición del documento en la lista ordenada
+            // Find position of document in sorted list
             const docPositionInSorted = sortedFinishedDocs.findIndex(
               (doc) => doc.id === document.id
             );
 
-            // Calcular la página que contiene el documento según el tamaño de página
+            // Calculate page containing document according to page size
             if (docPositionInSorted !== -1) {
               const targetPage = Math.floor(
                 docPositionInSorted / this.finishedPageSize()
@@ -264,36 +264,41 @@ export class OutgoingDocumentComponent implements OnInit {
       });
   }
 
-  // Método para publicar documento
+  // Method for document recovery
   publishDocument(document: any) {
-    console.log(`Publicando documento ${document.documentNumber}...`);
+    console.log(`Publishing document ${document.documentNumber}...`);
     
-    // Actualizar estado en el servidor
+    // Update status on the server
     this.documentService
       .updateDocumentStatus(document.documentNumber, 'finished', false)
       .subscribe({
         next: (response: any) => {
-          console.log('Respuesta del servidor:', response);
+          console.log('Server response:', response);
           
-          // Una vez actualizado en el servidor, procedemos a actualizar la UI
+          // Once updated on server, proceed to update UI
           const allDocs = this.allDocuments();
           const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
 
           if (docIndex !== -1) {
-            // Cambiar el estado de "waiting" a "finished"
+            // Change status from "waiting" to "finished"
             const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
 
-            // Actualizar el array allDocuments con el documento modificado
+            // Update allDocuments array with modified document
             const newAllDocs = [...allDocs];
             newAllDocs[docIndex] = updatedDoc;
 
-            // Asignar el nuevo array al signal allDocuments
+            // Assign new array to allDocuments signal
             this.allDocuments.set(newAllDocs);
-
-            // Guardar el ID del documento recién publicado para resaltarlo
+            
+            // Save ID of recently finished document to highlight it
             this.recentlyFinishedDoc.set(document.id);
+            
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+              this.recentlyFinishedDoc.set(null);
+            }, 3000);
 
-            // Actualizar el total de elementos en pagination
+            // Update total elements in pagination
             const waitingDocs = newAllDocs.filter(
               (doc) => doc.status === 'waiting'
             );
@@ -303,7 +308,7 @@ export class OutgoingDocumentComponent implements OnInit {
             this.waitingTotalItems.set(waitingDocs.length);
             this.finishedTotalItems.set(finishedDocs.length);
 
-            // Encontrar el documento en la lista ordenada de documentos finalizados
+            // Find document in sorted list of finished documents
             const sortedFinishedDocs = finishedDocs.sort((a, b) => {
               const numA =
                 typeof a.documentNumber === 'string'
@@ -316,12 +321,12 @@ export class OutgoingDocumentComponent implements OnInit {
               return numA - numB;
             });
 
-            // Encontrar la posición del documento en la lista ordenada
+            // Find position of document in sorted list
             const docPositionInSorted = sortedFinishedDocs.findIndex(
               (doc) => doc.id === document.id
             );
 
-            // Calcular la página que contiene el documento según el tamaño de página
+            // Calculate page containing document according to page size
             if (docPositionInSorted !== -1) {
               const targetPage = Math.floor(
                 docPositionInSorted / this.finishedPageSize()
@@ -335,8 +340,8 @@ export class OutgoingDocumentComponent implements OnInit {
               detail: `Đã phát hành văn bản số ${document.documentNumber}`,
             });
           } else {
-            // Si no encontramos el documento en nuestro estado local, recargamos todos los documentos
-            console.log('Documento no encontrado en estado local, recargando...');
+            // If document not found in local state, reload all documents
+            console.log('Document not found in local state, reloading...');
             this.loadOutgoingDocuments();
             
             this.messageService.add({
@@ -347,27 +352,27 @@ export class OutgoingDocumentComponent implements OnInit {
           }
         },
         error: (error) => {
-          console.error('Lỗi khi phát hành văn bản:', error);
+          console.error('Error updating status:', error);
           this.messageService.add({
             severity: 'error',
-            summary: 'Lỗi',
-            detail: 'Không thể phát hành văn bản. Vui lòng thử lại sau.',
+            summary: 'Error',
+            detail: 'Unable to publish document. Please try again later.',
           });
         }
       });
   }
 
-  // Método para publicación adicional de un documento
+  // Method for additional publishing of a document
   additionalPublish(document: any) {
-    // Mostrar mensaje de confirmación
+    // Show confirmation message
     this.messageService.add({
       severity: 'info',
       summary: 'Thông báo',
       detail: `Đang thực hiện phát hành bổ sung cho văn bản số ${document.documentNumber}`,
     });
     
-    // Lógica para publicación adicional podría implementarse aquí
-    // Por ahora solo mostramos un mensaje de éxito después de un breve retraso
+    // Logic for additional publication could be implemented here
+    // For now we just show a success message after a brief delay
     setTimeout(() => {
       this.messageService.add({
         severity: 'success',
@@ -377,41 +382,41 @@ export class OutgoingDocumentComponent implements OnInit {
     }, 1000);
   }
 
-  // Método para recuperar un documento
+  // Method to recover a document
   recoverDocument(document: any) {
-    console.log(`Recuperando documento ${document.documentNumber}...`);
+    console.log(`Recovering document ${document.documentNumber}...`);
     
-    // Actualizar estado en el servidor
+    // Update status on the server
     this.documentService
       .updateDocumentStatus(document.documentNumber, 'waiting', false)
       .subscribe({
         next: (response: any) => {
-          console.log('Respuesta del servidor:', response);
+          console.log('Server response:', response);
           
-          // Una vez actualizado en el servidor, procedemos a actualizar la UI
+          // Once updated on server, proceed to update UI
           const allDocs = this.allDocuments();
           const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
 
           if (docIndex !== -1) {
-            // Cambiar el estado de "finished" a "waiting"
+            // Change status from "finished" to "waiting"
             const updatedDoc = { ...allDocs[docIndex], status: 'waiting' };
 
-            // Actualizar el array allDocuments con el documento modificado
+            // Update allDocuments array with modified document
             const newAllDocs = [...allDocs];
             newAllDocs[docIndex] = updatedDoc;
 
-            // Asignar el nuevo array al signal allDocuments
+            // Assign new array to allDocuments signal
             this.allDocuments.set(newAllDocs);
-
-            // Guardar el ID del documento recién recuperado para resaltarlo
+            
+            // Save ID of recently recovered document to highlight it
             this.recentlyRecoveredDoc.set(document.id);
             
-            // Quitar resaltado después de 3 segundos
+            // Remove highlight after 3 seconds
             setTimeout(() => {
               this.recentlyRecoveredDoc.set(null);
             }, 3000);
 
-            // Actualizar el total de elementos en pagination
+            // Update total elements in pagination
             const waitingDocs = newAllDocs.filter(
               (doc) => doc.status === 'waiting'
             );
@@ -421,7 +426,7 @@ export class OutgoingDocumentComponent implements OnInit {
             this.waitingTotalItems.set(waitingDocs.length);
             this.finishedTotalItems.set(finishedDocs.length);
 
-            // Encontrar el documento en la lista ordenada de documentos en espera
+            // Find document in sorted list of waiting documents
             const sortedWaitingDocs = waitingDocs.sort((a, b) => {
               const numA =
                 typeof a.documentNumber === 'string'
@@ -434,12 +439,12 @@ export class OutgoingDocumentComponent implements OnInit {
               return numA - numB;
             });
 
-            // Encontrar la posición del documento en la lista ordenada
+            // Find position of document in sorted list
             const docPositionInSorted = sortedWaitingDocs.findIndex(
               (doc) => doc.id === document.id
             );
 
-            // Calcular la página que contiene el documento según el tamaño de página
+            // Calculate page containing document according to page size
             if (docPositionInSorted !== -1) {
               const targetPage = Math.floor(
                 docPositionInSorted / this.waitingPageSize()
@@ -453,8 +458,8 @@ export class OutgoingDocumentComponent implements OnInit {
               detail: `Đã lấy lại văn bản số ${document.documentNumber}`,
             });
           } else {
-            // Si no encontramos el documento en nuestro estado local, recargamos todos los documentos
-            console.log('Documento no encontrado en estado local, recargando...');
+            // If document not found in local state, reload all documents
+            console.log('Document not found in local state, reloading...');
             this.loadOutgoingDocuments();
             
             this.messageService.add({
@@ -465,13 +470,69 @@ export class OutgoingDocumentComponent implements OnInit {
           }
         },
         error: (error) => {
-          console.error('Lỗi khi lấy lại văn bản:', error);
+          console.error('Error when recovering document:', error);
           this.messageService.add({
             severity: 'error',
-            summary: 'Lỗi',
-            detail: 'Không thể lấy lại văn bản. Vui lòng thử lại sau.',
+            summary: 'Error',
+            detail: 'Cannot recover document. Please try again later.',
           });
         }
       });
+  }
+
+  updateAfterPublish(document: any) {
+    const allDocs = this.allDocuments();
+    const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
+
+    if (docIndex !== -1) {
+      // Change status from "waiting" to "finished"
+      const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
+
+      // Update allDocuments array with the modified document
+      const newAllDocs = [...allDocs];
+      newAllDocs[docIndex] = updatedDoc;
+
+      // Assign the new array to allDocuments signal
+      this.allDocuments.set(newAllDocs);
+
+      // Save the ID of the recently finished document to highlight it
+      this.recentlyFinishedDoc.set(document.id);
+
+      // Update total items in pagination
+      const waitingDocs = newAllDocs.filter(
+        (doc) => doc.status === 'waiting'
+      );
+      const finishedDocs = newAllDocs.filter(
+        (doc) => doc.status !== 'waiting'
+      );
+      this.waitingTotalItems.set(waitingDocs.length);
+      this.finishedTotalItems.set(finishedDocs.length);
+
+      // Find the position of the document in the sorted list
+      const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+        const numA =
+          typeof a.documentNumber === 'string'
+            ? parseInt(a.documentNumber.replace(/\D/g, ''))
+            : a.documentNumber;
+        const numB =
+          typeof b.documentNumber === 'string'
+            ? parseInt(b.documentNumber.replace(/\D/g, ''))
+            : b.documentNumber;
+        return numA - numB;
+      });
+
+      // Find the position of the document in the sorted list
+      const docPositionInSorted = sortedFinishedDocs.findIndex(
+        (doc) => doc.id === document.id
+      );
+
+      // Calculate the page containing the document according to the page size
+      if (docPositionInSorted !== -1) {
+        const targetPage = Math.floor(
+          docPositionInSorted / this.finishedPageSize()
+        );
+        this.finishedCurrentPage.set(targetPage);
+      }
+    }
   }
 } 
