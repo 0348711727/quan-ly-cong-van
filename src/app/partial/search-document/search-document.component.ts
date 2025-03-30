@@ -31,6 +31,7 @@ import {
   DocumentService,
   SearchParams,
 } from '../../services/document.service';
+import * as XLSX from 'xlsx';
 
 // Extended interface for local use
 interface SearchResultDocument {
@@ -48,6 +49,7 @@ interface SearchResultDocument {
   attachments?: string[];
   processingOpinion?: string;
   status?: string;
+  signedBy?: string;
   // For sorting
   issuedDateObj?: Date | null;
 }
@@ -60,7 +62,8 @@ interface SearchDataResponse {
 
 // Type for the "data" property
 interface DocumentData {
-  documents: SearchResultDocument[];
+  paginatedDocuments: SearchResultDocument[];
+  filteredDocuments: SearchResultDocument[];
   pagination: Pagination;
 }
 
@@ -113,7 +116,8 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   searchParams: WritableSignal<SearchParams> = signal({ ...emptySearchForm });
   
   // UI state signals
-  documents: WritableSignal<SearchResultDocument[]> = signal([]);
+  paginatedDocuments: WritableSignal<SearchResultDocument[]> = signal([]);
+  filteredDocuments: WritableSignal<SearchResultDocument[]> = signal([]);
   loading: WritableSignal<boolean> = signal(false);
   hasSearched: boolean = false;
   showNoAttachmentsMessage = signal<boolean>(false);
@@ -222,7 +226,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       console.error('Error in onChangeSearch:', error);
       this.turnOffLoading();
       this.hasSearched = true;
-      this.documents.set([]);
+      this.paginatedDocuments.set([]);
       
       // Force change detection if there's an error
       this.cdr.detectChanges();
@@ -254,12 +258,13 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges();
     
     searchFunction(searchParams).subscribe({
-      next: (response: SearchDataResponse) => {      
+      next: (response: SearchDataResponse) => {
+        this.filteredDocuments.set(response.data.filteredDocuments);
         this.displaySearchResult(response);
       },
       error: (err: any) => {
         console.error('Error searching documents:', err);
-        this.documents.set([]);
+        this.paginatedDocuments.set([]);
         this.hasSearched = true;
         this.turnOffLoading()
         
@@ -272,29 +277,19 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   private displaySearchResult(response: SearchDataResponse) {
     try {
       const {
-        data: { documents, pagination },
+        data: { paginatedDocuments, pagination },
       } = response;
 
       // Update pagination information
       this.totalItems.set(pagination.totalItems);
       
-      // if (!documents || documents.length === 0) {          
-      //   this.documents.set([]);
-      //   this.hasSearched = true;
-      //   this.turnOffLoading()
-        
-      //   // Force change detection after getting empty results
-      //   this.cdr.detectChanges();
-      //   return;
-      // }
-      
       // Keep dates as strings for display, but add additional properties for sorting
-      const docs = (documents as SearchResultDocument[]).map((doc) => {
+      const docs = paginatedDocuments.map((doc) => {
         return {...doc, issuedDateObj: this.formatDate(doc.issuedDate)};
       });
       
       // Update documents signal
-      this.documents.set(docs);
+      this.paginatedDocuments.set(docs);
 
       // Sort documents by issuedDate
       this.sortDocumentsByIssuedDate();
@@ -306,7 +301,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       this.cdr.detectChanges();
     } catch (error) {
       console.error('Error processing search results:', error);
-      this.documents.set([]);
+      this.paginatedDocuments.set([]);
       this.hasSearched = true;
       this.turnOffLoading()
       
@@ -354,7 +349,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    */
   sortDocumentsByIssuedDate() {
     try {
-      const sortedDocs = [...this.documents()].sort((a: any, b: any) => {
+      const sortedDocs = [...this.paginatedDocuments()].sort((a: any, b: any) => {
         // Handle case where one of the two documents has no issue date
         if (!a.issuedDateObj) return 1; // Push documents without dates to the end
         if (!b.issuedDateObj) return -1;
@@ -375,7 +370,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
         }
       });
       
-      this.documents.set(sortedDocs);
+      this.paginatedDocuments.set(sortedDocs);
       
       // Force change detection
       this.cdr.detectChanges();
@@ -454,7 +449,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    */
   private clearResults() {
     // Clear results
-    this.documents.set([]);
+    this.paginatedDocuments.set([]);
     this.hasSearched = false;
 
     // Reset pagination
@@ -505,13 +500,13 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   getShortFileName(filename: string): string {
     // Split filename by hyphen to get the part without timestamp
     const parts = filename.split('-');
-
+    
     // If there is a timestamp at the beginning (standard format), remove it
     if (parts.length > 1 && !isNaN(Number(parts[0]))) {
       // Remove the first part (timestamp) and join the remaining parts
       return parts.slice(1).join('-');
     }
-
+    
     // If not in the right format or no timestamp, return the original name
     return filename;
   }
@@ -602,7 +597,8 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
           this.resetFormForDocumentTypeChange(docTypeValue);
           
           // Reset results table
-          this.documents.set([]);
+          this.paginatedDocuments.set([]);
+          this.filteredDocuments.set([]);
           this.hasSearched = false;
           
           // Reset pagination
@@ -645,6 +641,117 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       console.log('Form reset for document type change:', documentType);
     } catch (error) {
       console.error('Error during form reset for document type change:', error);
+    }
+  }
+
+  /**
+   * Xuất dữ liệu hiển thị ra file Excel
+   */
+  exportToExcel(): void {
+    try {
+      this.loading.set(true);
+      this.processAndExportData(this.filteredDocuments());
+    } catch (error) {
+      console.error('Lỗi khi xuất file Excel:', error);
+      this.loading.set(false);
+    }
+  }
+  
+  /**
+   * Xử lý và xuất dữ liệu ra file Excel
+   */
+  private processAndExportData(documents: SearchResultDocument[]): void {
+    try {
+      if (documents.length === 0) {
+        console.warn('Không có dữ liệu để xuất');
+        this.loading.set(false);
+        return;
+      }
+      
+      // Hàm định dạng ngày tháng đẹp hơn
+      const formatDateString = (dateStr?: string) => {
+        if (!dateStr) return '';
+        try {
+          const date = new Date(dateStr);
+          return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('vi-VN');
+        } catch {
+          return dateStr;
+        }
+      };
+      
+      // Tạo dữ liệu xuất theo thứ tự cột giống UI
+      const exportData = documents.map((doc, index) => {
+        // Base data cho cả văn bản đến và văn bản đi
+        const data: any = {
+          'TT': index + 1,
+        };
+        
+        // Thêm dữ liệu theo thứ tự cột giống UI
+        if (this.searchParams().documentType === 'incoming') {
+          // Thứ tự cột cho văn bản đến
+          data['Số đến'] = doc.documentNumber || '';
+          data['Ngày đến'] = formatDateString(doc.receivedDate);
+          data['Số ký hiệu'] = doc.referenceNumber || '';
+          data['Ngày văn bản'] = formatDateString(doc.issuedDate);
+          data['Hạn xử lý'] = formatDateString(doc.dueDate);
+          data['Tác giả'] = doc.author || '';
+          data['Trích yếu'] = doc.summary || '';
+          data["Nội dung"] = doc.attachments?.join(', ') || '';
+        } else {
+          // Thứ tự cột cho văn bản đi
+          data['Số ký hiệu'] = doc.referenceNumber || '';
+          data['Ngày văn bản'] = formatDateString(doc.issuedDate);
+          data['Tác giả'] = doc.signedBy || '';
+          data['Trích yếu'] = doc.summary || '';
+          data["Nội dung"] = doc.attachments?.join(', ') || '';
+        }
+        
+        return data;
+      });
+      
+      // Tạo workbook Excel từ dữ liệu
+      const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Điều chỉnh chiều rộng cột cho dễ đọc
+      let columnsWidth: any[] = [];
+      
+      if (this.searchParams().documentType === 'incoming') {
+        columnsWidth = [
+          { wch: 5 },  // TT
+          { wch: 10 }, // Số đến
+          { wch: 15 }, // Ngày đến  
+          { wch: 15 }, // Số ký hiệu
+          { wch: 15 }, // Ngày văn bản
+          { wch: 15 }, // Hạn xử lý
+          { wch: 25 }, // Tác giả
+          { wch: 50 }, // Trích yếu
+        ];
+      } else {
+        columnsWidth = [
+          { wch: 5 },  // TT
+          { wch: 15 }, // Số ký hiệu
+          { wch: 15 }, // Ngày văn bản
+          { wch: 25 }, // Tác giả
+          { wch: 50 }, // Trích yếu
+        ];
+      }
+      
+      worksheet['!cols'] = columnsWidth;
+      
+      const workbook: XLSX.WorkBook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Kết quả tìm kiếm');
+      
+      // Tạo tên file xuất ra
+      const documentType = this.searchParams().documentType === 'incoming' ? 'Văn bản đến' : 'Văn bản đi';
+      const fileName = `${documentType}_${new Date().toLocaleDateString('vi-VN')}.xlsx`;
+      
+      // Xuất file Excel
+      XLSX.writeFile(workbook, fileName);
+      
+      this.loading.set(false);
+    } catch (error) {
+      console.error('Lỗi khi xử lý và xuất dữ liệu Excel:', error);
+      this.loading.set(false);
     }
   }
 }
