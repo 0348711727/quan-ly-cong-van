@@ -7,9 +7,10 @@ import {
 } from '@angular/core';
 import { MatLabel } from '@angular/material/form-field';
 import { Router } from '@angular/router';
+import { L10nTranslateAsyncPipe } from 'angular-l10n';
 import _ from 'lodash';
 import { MessageService } from 'primeng/api';
-import { FileUploadModule } from 'primeng/fileupload';
+import { FileUpload, FileUploadModule } from 'primeng/fileupload';
 import { ToastModule } from 'primeng/toast';
 import { environment } from '../../../environments/environment';
 import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
@@ -17,7 +18,7 @@ import { CcDatePickerComponent } from '../../commons/cc-date-picker/cc-date-pick
 import { CcDropdownComponent } from '../../commons/cc-dropdown/cc-dropdown.component';
 import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
 import { HttpClientService } from '../../services/http-client.service';
-import { MESSAGE_CODES } from '../../share/constant';
+import { MESSAGE_CODES, MOVE_CV } from '../../share/constant';
 
 export type Dropdown = { label: string; value: string | null }[];
 @Component({
@@ -30,6 +31,7 @@ export type Dropdown = { label: string; value: string | null }[];
     FileUploadModule,
     ToastModule,
     CcDropdownComponent,
+    L10nTranslateAsyncPipe,
   ],
   providers: [MessageService],
   templateUrl: './add-document.component.html',
@@ -50,6 +52,8 @@ export class AddDocumentComponent {
     receivingMethod: '',
     dueDate: '',
     processingOpinion: '',
+    attachments: '',
+    internalRecipient: '',
   };
   body: WritableSignal<{
     documentNumber?: string;
@@ -63,6 +67,8 @@ export class AddDocumentComponent {
     receivingMethod: string;
     dueDate: string;
     processingOpinion: string;
+    attachments: string;
+    internalRecipient?: string;
   }> = signal(this.emptyBody);
   error: WritableSignal<any> = signal({});
   documentTitle: WritableSignal<string> = signal('Tạo');
@@ -71,6 +77,7 @@ export class AddDocumentComponent {
     documentType: Dropdown;
     priority: Dropdown;
     receivingMethod: Dropdown;
+    internalRecipient: Dropdown;
   }> = signal({
     documentType: [
       { label: 'Báo cáo', value: 'report' },
@@ -87,13 +94,19 @@ export class AddDocumentComponent {
       { label: 'Giấy', value: 'letter' },
       { label: 'Điện tử', value: 'email' },
     ],
+    internalRecipient: [
+      { label: MOVE_CV.CBQL, value: 'management-staff' },
+      { label: MOVE_CV.GIAO_VIEN, value: 'teacher' },
+      { label: MOVE_CV.NHAN_VIEN, value: 'staff' },
+    ],
   });
+  files: any = signal('');
   constructor() {
     const navigation = this.router.getCurrentNavigation();
     const state = navigation?.extras.state;
     if (!state) return;
-    this.isEditDocument.set(!state['action']);
-    this.documentTitle.set(state['action'] ? 'Sửa' : 'Tạo');
+    this.isEditDocument.set(!state['data']['action']);
+    this.documentTitle.set('Sửa');
     this.body.set(state['data']);
   }
 
@@ -108,20 +121,34 @@ export class AddDocumentComponent {
     this.isEditDocument() ? this.patchDocument$() : this.saveDocument$();
   }
   onUpload(event: any) {
-    console.log(event);
+    this.files.set(event.currentFiles);
+  }
+  onRemove() {
+    this.files.set(null);
   }
   cancel() {
     this.router.navigate(['../']);
   }
   patchDocument$() {
+    const body: FormData = new FormData();
+    /* -------------------IMPROVE LATER BECAUSE WE WILL CREATE SEPERATE DB TO STORE UPLOAD DOCUMENT ---------------------------
+
+    body.append(
+      'attachments',
+      (this.files() as FileUpload)._files[0],
+      (this.files() as FileUpload)._files[0].name
+    );
+
+*/
     return this.httpCientService
       .commonPatch({
         url: `${environment.RESOURCE_URL}/incoming-documents/${
           this.body().documentNumber
         }`,
         body: {
-          ..._.omit(_.cloneDeep(this.body()), 'internalRecipient'),
+          ..._.cloneDeep(this.body()),
           status: 'finished',
+          body,
         },
       })
       .subscribe({
@@ -140,10 +167,22 @@ export class AddDocumentComponent {
       });
   }
   saveDocument$() {
+    const body = new FormData();
+    for (const file of (this.files() as FileUpload)?._files) {
+      if (!file) return;
+      body.append('attachments', file);
+    }
+
+    const jsonBody: any = _.cloneDeep(this.body());
+    for (const key in jsonBody) {
+      if (jsonBody.hasOwnProperty(key)) {
+        body.append(key, jsonBody[key]);
+      }
+    }
     return this.httpCientService
       .comonPost({
         url: `${environment.RESOURCE_URL}/incoming-documents`,
-        body: this.body(),
+        body,
       })
       .subscribe({
         next: (data: any) => {
@@ -153,7 +192,7 @@ export class AddDocumentComponent {
           }
           this.body.set(this.emptyBody);
           this.error.set({});
-
+          this.files().set(null);
           this.messageService.add({
             severity: 'success',
             summary: 'Success Message',
@@ -161,10 +200,11 @@ export class AddDocumentComponent {
           });
         },
         error: ({ error }) => {
-          this.messageService.addAll([
-            { severity: 'info', summary: 'Info', detail: 'First message' },
-            { severity: 'warn', summary: 'Warning', detail: 'Second message' },
-          ]);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Something went wrong',
+          });
           this.error.set(error.errors);
         },
       });

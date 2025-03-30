@@ -4,13 +4,15 @@ import {
   isDevMode,
   provideZoneChangeDetection,
 } from '@angular/core';
+import { MatPaginatorIntl } from '@angular/material/paginator';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
+import Aura from '@primeng/themes/aura';
 import { provideL10nTranslation } from 'angular-l10n';
+import { providePrimeNG } from 'primeng/config';
 import { routes } from './app.routes';
 import { l10nConfig, TranslationLoader } from './l10n-config';
-import { MatPaginatorIntl } from '@angular/material/paginator';
 import { CustomPaginatorIntl } from './services/custom-paginator-intl.service';
 
 export const appConfig: ApplicationConfig = {
@@ -29,6 +31,11 @@ export const appConfig: ApplicationConfig = {
     {
       provide: MatPaginatorIntl,
       useClass: CustomPaginatorIntl,
-    }
+    },
+    providePrimeNG({
+      theme: {
+        preset: Aura,
+      },
+    }),
   ],
 };

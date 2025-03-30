@@ -1,7 +1,7 @@
 <div class="main-container p-3">
   <mat-label
     class="main-container__header"
-    >{{ `${documentTitle()} công văn` }}</mat-label
+    >{{ `${documentTitle()} công văn đến` }}</mat-label
   >
   <div class="main-container__formInput p-3">
     <div class="row">
@@ -11,7 +11,7 @@
           [errorMessage]="this.error()?.['receivedDate']?.[0]?.message"
           (valueChange)="onChange('receivedDate', $event)"
           label="receivedDate"
-        ></cc-date-picker>
+        />
       </div>
       <div class="col-3">
         <cc-date-picker
@@ -19,7 +19,7 @@
           [errorMessage]="this.error()?.['issuedDate']?.[0]?.message"
           (valueChange)="onChange('issuedDate', $event)"
           label="issuedDate"
-        ></cc-date-picker>
+        />
       </div>
       <div class="col-3">
         <cc-input
@@ -27,7 +27,7 @@
           [errorMessage]="this.error()?.['referenceNumber']?.[0]?.message"
           (valueChange)="onChange('referenceNumber', $event)"
           label="referenceNumber"
-        ></cc-input>
+        />
       </div>
       <div class="col-3">
         <cc-dropdown
@@ -36,8 +36,7 @@
           [errorMessage]="this.error()?.['priority']?.[0]?.message"
           (valueChange)="onChange('priority', $event)"
           label="priority"
-        >
-        </cc-dropdown>
+        />
       </div>
     </div>
     <div class="row">
@@ -48,8 +47,7 @@
           (valueChange)="onChange('type', $event)"
           [errorMessage]="this.error()?.['type']?.[0]?.message"
           label="type"
-        >
-        </cc-dropdown>
+        />
       </div>
       <div class="col-3">
         <cc-input
@@ -57,7 +55,7 @@
           [errorMessage]="this.error()?.['author']?.[0]?.message"
           (valueChange)="onChange('author', $event)"
           label="author"
-        ></cc-input>
+        />
       </div>
       <div class="col-3">
         <cc-input
@@ -65,7 +63,7 @@
           [errorMessage]="this.error()?.['summary']?.[0]?.message"
           (valueChange)="onChange('summary', $event)"
           label="summary"
-        ></cc-input>
+        />
       </div>
       <div class="col-3">
         <cc-dropdown
@@ -74,8 +72,7 @@
           [errorMessage]="this.error()?.['receivingMethod']?.[0]?.message"
           (valueChange)="onChange('receivingMethod', $event)"
           label="receivingMethod"
-        >
-        </cc-dropdown>
+        />
       </div>
     </div>
     <div class="row">
@@ -85,7 +82,7 @@
           [errorMessage]="this.error()?.['dueDate']?.[0]?.message"
           (valueChange)="onChange('dueDate', $event)"
           label="dueDate"
-        ></cc-date-picker>
+        />
       </div>
       <div class="col-3">
         <cc-input
@@ -93,23 +90,36 @@
           [errorMessage]="this.error()?.['processingOpinion']?.[0]?.message"
           (valueChange)="onChange('processingOpinion', $event)"
           label="processingOpinion"
-        ></cc-input>
-      </div>
-      <!-- <div class="col-3">
-        <p-fileupload
-          #fu
-          mode="basic"
-          chooseLabel="Choose"
-          chooseIcon="pi pi-upload"
-          name="demo[]"
-          url="https://www.primefaces.org/cdn/api/upload.php"
-          accept="image/*"
-          maxFileSize="1000000"
-          (onUpload)="onUpload($event)"
         />
-        <p-button label="Upload" (onClick)="fu.upload()" severity="secondary" />
-      </div> -->
+      </div>
+      @if(isEditDocument()) {
+      <div class="col-3">
+        <cc-dropdown
+          [listDropdown]="dropdown().internalRecipient"
+          [value]="body().internalRecipient ?? ''"
+          [errorMessage]="this.error()?.['internalRecipient']?.[0]?.message"
+          (valueChange)="onChange('internalRecipient', $event)"
+          label="internalRecipient"
+        />
+      </div>
+      }
     </div>
+    @if(!isEditDocument()) {
+    <div class="col-6 d-flex file-upload">
+      <p-fileupload
+        #fu
+        [showUploadButton]="false"
+        [multiple]="true"
+        mode="advanced"
+        [chooseLabel]="('choose' | translateAsync) ?? ''"
+        chooseIcon="pi pi-upload"
+        [name]="this.body().attachments"
+        maxFileSize="1000000"
+        (onSelect)="onUpload($event)"
+        (onClear)="onRemove()"
+      />
+    </div>
+    }
     <div class="button d-flex justify-content-end p-2">
       <cc-button
         mode="secondary"

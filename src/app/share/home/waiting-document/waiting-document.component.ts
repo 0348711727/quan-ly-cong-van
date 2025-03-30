@@ -38,9 +38,8 @@ export class WaitingDocumentComponent {
   MOVE_CV = MOVE_CV;
   chuyen = viewChild('chuyen');
   returnDocument(element: any) {
-    localStorage.setItem('action', 'Sửa');
     this.router.navigateByUrl('add-document', {
-      state: { data: element, action: true },
+      state: { ...element },
     });
   }
 
