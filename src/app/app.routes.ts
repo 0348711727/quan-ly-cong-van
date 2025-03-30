@@ -19,6 +19,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'add-outgoing-document',
+    loadComponent: () =>
+      import(
+        './partial/add-outgoing-document/add-outgoing-document.component'
+      ).then((com) => com.AddOutgoingDocumentComponent),
+  },
+  {
     path: '**',
     loadComponent: () =>
       import('./share/not-found-404/not-found-404.component').then(

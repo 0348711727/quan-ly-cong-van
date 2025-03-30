@@ -2,20 +2,19 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   EventEmitter,
-  Input,
-  Output,
   OnInit,
+  Output,
+  computed,
   inject,
   signal,
-  computed,
 } from '@angular/core';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
-import { MOVE_CV } from '../../constant';
-import { DocumentService } from '../../../services/document.service';
 import { MessageService } from 'primeng/api';
+import { DocumentService } from '../../../services/document.service';
+import { MOVE_CV } from '../../constant';
 import { RecipientLabelPipe } from '../../pipes/recipient-label.pipe';
 
 @Component({
@@ -142,7 +141,7 @@ export class OutgoingDocumentComponent implements OnInit {
           const enhancedDocuments = documents.map((doc: any) => {
             return {
               ...doc,
-              attachments: doc.fileUrls && doc.fileUrls.length > 0
+              attachments: doc.fileUrls && doc.fileUrls.length > 0,
             };
           });
 
@@ -183,8 +182,9 @@ export class OutgoingDocumentComponent implements OnInit {
   }
 
   returnDocument(document: any) {
-    localStorage.setItem('action', 'Sửa');
-    this.router.navigateByUrl('add-outgoing-document', { state: { data: document } });
+    this.router.navigateByUrl('add-outgoing-document', {
+      state: { data: document },
+    });
   }
 
   finishDocument(document: any) {
@@ -267,14 +267,14 @@ export class OutgoingDocumentComponent implements OnInit {
   // Method for document recovery
   publishDocument(document: any) {
     console.log(`Publishing document ${document.documentNumber}...`);
-    
+
     // Update status on the server
     this.documentService
       .updateDocumentStatus(document.documentNumber, 'finished', false)
       .subscribe({
         next: (response: any) => {
           console.log('Server response:', response);
-          
+
           // Once updated on server, proceed to update UI
           const allDocs = this.allDocuments();
           const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
@@ -289,10 +289,10 @@ export class OutgoingDocumentComponent implements OnInit {
 
             // Assign new array to allDocuments signal
             this.allDocuments.set(newAllDocs);
-            
+
             // Save ID of recently finished document to highlight it
             this.recentlyFinishedDoc.set(document.id);
-            
+
             // Remove highlight after 3 seconds
             setTimeout(() => {
               this.recentlyFinishedDoc.set(null);
@@ -343,7 +343,7 @@ export class OutgoingDocumentComponent implements OnInit {
             // If document not found in local state, reload all documents
             console.log('Document not found in local state, reloading...');
             this.loadOutgoingDocuments();
-            
+
             this.messageService.add({
               severity: 'success',
               summary: 'Thành công',
@@ -358,7 +358,7 @@ export class OutgoingDocumentComponent implements OnInit {
             summary: 'Error',
             detail: 'Unable to publish document. Please try again later.',
           });
-        }
+        },
       });
   }
 
@@ -370,7 +370,7 @@ export class OutgoingDocumentComponent implements OnInit {
       summary: 'Thông báo',
       detail: `Đang thực hiện phát hành bổ sung cho văn bản số ${document.documentNumber}`,
     });
-    
+
     // Logic for additional publication could be implemented here
     // For now we just show a success message after a brief delay
     setTimeout(() => {
@@ -385,14 +385,14 @@ export class OutgoingDocumentComponent implements OnInit {
   // Method to recover a document
   recoverDocument(document: any) {
     console.log(`Recovering document ${document.documentNumber}...`);
-    
+
     // Update status on the server
     this.documentService
       .updateDocumentStatus(document.documentNumber, 'waiting', false)
       .subscribe({
         next: (response: any) => {
           console.log('Server response:', response);
-          
+
           // Once updated on server, proceed to update UI
           const allDocs = this.allDocuments();
           const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
@@ -407,10 +407,10 @@ export class OutgoingDocumentComponent implements OnInit {
 
             // Assign new array to allDocuments signal
             this.allDocuments.set(newAllDocs);
-            
+
             // Save ID of recently recovered document to highlight it
             this.recentlyRecoveredDoc.set(document.id);
-            
+
             // Remove highlight after 3 seconds
             setTimeout(() => {
               this.recentlyRecoveredDoc.set(null);
@@ -461,7 +461,7 @@ export class OutgoingDocumentComponent implements OnInit {
             // If document not found in local state, reload all documents
             console.log('Document not found in local state, reloading...');
             this.loadOutgoingDocuments();
-            
+
             this.messageService.add({
               severity: 'success',
               summary: 'Thành công',
@@ -476,7 +476,7 @@ export class OutgoingDocumentComponent implements OnInit {
             summary: 'Error',
             detail: 'Cannot recover document. Please try again later.',
           });
-        }
+        },
       });
   }
 
@@ -499,12 +499,8 @@ export class OutgoingDocumentComponent implements OnInit {
       this.recentlyFinishedDoc.set(document.id);
 
       // Update total items in pagination
-      const waitingDocs = newAllDocs.filter(
-        (doc) => doc.status === 'waiting'
-      );
-      const finishedDocs = newAllDocs.filter(
-        (doc) => doc.status !== 'waiting'
-      );
+      const waitingDocs = newAllDocs.filter((doc) => doc.status === 'waiting');
+      const finishedDocs = newAllDocs.filter((doc) => doc.status !== 'waiting');
       this.waitingTotalItems.set(waitingDocs.length);
       this.finishedTotalItems.set(finishedDocs.length);
 
@@ -535,4 +531,4 @@ export class OutgoingDocumentComponent implements OnInit {
       }
     }
   }
-} 
+}

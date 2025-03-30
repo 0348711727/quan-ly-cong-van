@@ -33,5 +33,8 @@
   "paginatorOf": "của",
   "paginatorNoResults": "Không có kết quả",
   "search": "Tìm kiếm",
-  "choose": "Chọn công văn"
+  "choose": "Chọn công văn",
+  "signedBy": "Người ký văn bản",
+  "signerPosition": "Chức vụ người ký",
+  "externalRecipient": "Nơi nhận bên ngoài"
 }
