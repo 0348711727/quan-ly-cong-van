@@ -196,19 +196,31 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     }
   }
 
+  private turnOffLoading() {
+    this.loading.set(false);
+  }
+  
+  private turnOnLoading() {
+    this.loading.set(true);
+  }
+
+  private resetPageIndex() {
+    this.pageIndex.set(0);
+  }
+
   onChangeSearch() {
     try {
       console.log('Starting search with params:', this.searchParams());
-      this.loading.set(true);
+      this.turnOnLoading();
       
       // Reset pagination when performing a new search
-      this.pageIndex.set(0);
+      this.resetPageIndex();
       
       // Execute search
       this.search(this.searchParams());
     } catch (error) {
       console.error('Error in onChangeSearch:', error);
-      this.loading.set(false);
+      this.turnOffLoading();
       this.hasSearched = true;
       this.documents.set([]);
       
@@ -236,81 +248,78 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     searchParams: any,
     searchFunction: (params: any) => Observable<any>
   ) {
-    this.loading.set(true);
+    this.turnOnLoading()
     
     // Force change detection to show loading state
     this.cdr.detectChanges();
     
     searchFunction(searchParams).subscribe({
-      next: (response: any) => {      
-        try {
-          const {
-            data: { documents, pagination },
-          } = response as SearchDataResponse;
-
-          // Update pagination information
-          this.totalItems.set(pagination.totalItems);
-          
-          if (!documents || documents.length === 0) {          
-            this.documents.set([]);
-            this.hasSearched = true;
-            this.loading.set(false);
-            
-            // Force change detection after getting empty results
-            this.cdr.detectChanges();
-            return;
-          }
-          
-          // Keep dates as strings for display, but add additional properties for sorting
-          const docs = (documents as SearchResultDocument[]).map((doc) => {
-            // Create a copy of the document
-            const docCopy = { ...doc };
-            
-            // Create a Date object only for sorting (not for display)
-            docCopy.issuedDateObj = this.formatDate(doc.issuedDate);
-            
-            return docCopy;
-          });
-          
-          // Update documents signal
-          this.documents.set(docs);
-
-          // Sort documents by issuedDate
-          this.sortDocumentsByIssuedDate();
-          
-          // Make sure to set loading to false before change detection
-          this.loading.set(false);
-          
-          // Ensure change detection happens when we have the final results
-          this.cdr.detectChanges();
-        } catch (error) {
-          console.error('Error processing search results:', error);
-          this.documents.set([]);
-          this.hasSearched = true;
-          this.loading.set(false);
-          
-          // Force change detection in case of error
-          this.cdr.detectChanges();
-        } finally {
-          this.hasSearched = true;
-          this.loading.set(false);
-          
-          // Final change detection to ensure UI is consistent with state
-          this.cdr.detectChanges();
-        }
+      next: (response: SearchDataResponse) => {      
+        this.displaySearchResult(response);
       },
       error: (err: any) => {
         console.error('Error searching documents:', err);
         this.documents.set([]);
         this.hasSearched = true;
-        this.loading.set(false);
+        this.turnOffLoading()
         
         // Force change detection after error
         this.cdr.detectChanges();
       },
     });
   }
+  
+  private displaySearchResult(response: SearchDataResponse) {
+    try {
+      const {
+        data: { documents, pagination },
+      } = response;
 
+      // Update pagination information
+      this.totalItems.set(pagination.totalItems);
+      
+      // if (!documents || documents.length === 0) {          
+      //   this.documents.set([]);
+      //   this.hasSearched = true;
+      //   this.turnOffLoading()
+        
+      //   // Force change detection after getting empty results
+      //   this.cdr.detectChanges();
+      //   return;
+      // }
+      
+      // Keep dates as strings for display, but add additional properties for sorting
+      const docs = (documents as SearchResultDocument[]).map((doc) => {
+        return {...doc, issuedDateObj: this.formatDate(doc.issuedDate)};
+      });
+      
+      // Update documents signal
+      this.documents.set(docs);
+
+      // Sort documents by issuedDate
+      this.sortDocumentsByIssuedDate();
+      
+      // Make sure to set loading to false before change detection
+      this.turnOffLoading()
+      
+      // Ensure change detection happens when we have the final results
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error processing search results:', error);
+      this.documents.set([]);
+      this.hasSearched = true;
+      this.turnOffLoading()
+      
+      // Force change detection in case of error
+      this.cdr.detectChanges();
+    } finally {
+      this.hasSearched = true;
+      this.turnOffLoading()
+      
+      // Final change detection to ensure UI is consistent with state
+      this.cdr.detectChanges();
+    }
+  }
   public handleSearch(searchParams: any) {
     if (searchParams.documentType === 'incoming') {
       this.searchDocuments(
@@ -324,7 +333,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       );
     } else {
       console.warn('Unknown document type:', searchParams.documentType);
-      this.loading.set(false);
+      this.turnOffLoading()
     }
   }
 
@@ -336,7 +345,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     this.pageIndex.set(event.pageIndex);
 
     // Load data with new pagination settings
-    this.loading.set(true);
+    this.turnOnLoading()
     this.search(this.searchParams());
   }
 
@@ -449,7 +458,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     this.hasSearched = false;
 
     // Reset pagination
-    this.pageIndex.set(0);
+    this.resetPageIndex()
     this.totalItems.set(0);
 
     // Reset display settings
@@ -463,75 +472,30 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges();
   }
 
-  // Función estándar para descargar archivos adjuntos
-  downloadAttachment(param1: string | number, param2?: number | string, param3?: string) {
+  downloadAttachment(fileName: string) {
     this.showNoAttachmentsMessage.set(false);
-    
-    if (typeof param1 === 'number' && typeof param2 === 'number') {
-      // Case where param1 is documentId (number) and param2 is attachmentId (number)
-      const documentId = param1;
-      const attachmentId = param2;
-      const filename = param3 || '';
-      
-      if (!attachmentId) {
-        this.showNoAttachmentsMessage.set(true);
-        return;
-      }
-      
-      // The API expects a filename, we use 'temp' + attachmentId as default value
-      const filenameToUse = `temp_${attachmentId}`;
-      
-      this.documentService.downloadAttachment$(filenameToUse, 'incoming')
-        .pipe(
-          takeUntilDestroyed(this.destroyRef),
-          catchError((error) => {
-            console.error('Error downloading attachment:', error);
-            alert('Error downloading the attachment. Please try again.');
-            return of(null);
-          })
-        )
-        .subscribe((response: any) => {
-          if (!response) return;
-          
-          // Create blob from the response data
-          const blob = new Blob([response], { type: 'application/octet-stream' });
-          
-          // Create a download link and trigger the download
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = filename || `attachment-${attachmentId}.pdf`;
-          link.click();
-          
-          // Clean up
-          window.URL.revokeObjectURL(url);
-        });
-    } 
-    else if (typeof param1 === 'string') {
-      // Caso original: param1 es filename (string), param2 es documentType (opcional)
-      const filename = param1;
-      const documentType = typeof param2 === 'string' ? param2 : this.searchParams().documentType;
-      
-      this.documentService.downloadAttachment$(filename, documentType).subscribe({
-        next: (blob: any) => {
-          // Create URL for blob and download
-          const url = window.URL.createObjectURL(blob);
-          const a = window.document.createElement('a');
-          a.href = url;
-          a.download = this.getShortFileName(filename); // Use shorter name
-          window.document.body.appendChild(a);
-          a.click();
 
-          // Cleanup
-          window.URL.revokeObjectURL(url);
-          window.document.body.removeChild(a);
-        },
-        error: (error) => {
-          console.error('Error downloading attachment', error);
-          alert('Unable to download attachment. Please try again later.');
-        },
-      });
-    }
+    const documentType = this.selectDocumentType.value as string;
+      
+    this.documentService.downloadAttachment$(fileName, documentType).subscribe({
+      next: (blob: any) => {
+        // Create URL for blob and download
+        const url = window.URL.createObjectURL(blob);
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = this.getShortFileName(fileName); // Use shorter name
+        window.document.body.appendChild(a);
+        a.click();
+
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        window.document.body.removeChild(a);
+      },
+      error: (error: unknown) => {
+        console.error('Error downloading attachment', error);
+        alert('Unable to download attachment. Please try again later.');
+      },
+    });
   }
 
   /**
@@ -564,25 +528,26 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
 
     // Try parsing DD/MM/YYYY format
     if (typeof dateString === 'string' && dateString.includes('/')) {
-      const parts = dateString.split('/');
-      if (parts.length === 3) {
-        // Note: Month in JavaScript starts from 0, so subtract 1
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const year = parseInt(parts[2], 10);
+      // Match format DD/MM/YYYY
+      const regex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+      const match = dateString.match(regex);
 
-        // Validate date components
-        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-          try {
-            const date = new Date(year, month, day);
-            if (isNaN(date.getTime())) return null;
-            return date;
-          } catch (e) {
-            console.error('Error processing date:', e);
-            return null;
-          }
-        }
+      if (!match) return null;
+      
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1; // Adjust for JS months (0-11)
+      const year = parseInt(match[3], 10);
+      
+      const date = new Date(year, month, day);
+      
+      // Validate that the date is real (handles cases like 31/02/2023)
+      if (date.getDate() === day && 
+          date.getMonth() === month && 
+          date.getFullYear() === year) {
+        return date;
       }
+
+      return null;
     }
 
     // Try parsing ISO or other formats
@@ -605,50 +570,51 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       const currentParams = this.searchParams();
       const updatedParams = { ...currentParams } as Record<string, any>;
 
-      // If document type changes
-      if (field === 'documentType') {
-        // Ensure value is a string
-        const docTypeValue: string = value || '';
+      if (field !== 'documentType') {
+        // Handle normal field updates
+        updatedParams[field] = value || '';
+        this.searchParams.set(updatedParams as SearchParams);
         
-        // Check if the value is actually different
-        if (currentParams.documentType !== docTypeValue) {
-          // Reset the form except for document type
-          this.ngZone.run(() => {
-            // First update the document type value
-            updatedParams[field] = docTypeValue;
-            this.searchParams.set(updatedParams as SearchParams);
-            
-            // Update displayed columns
-            this.displayedColumns.set(
-              docTypeValue === 'incoming' ? this.incomingColumns : this.outgoingColumns
-            );
-            
-            // Reset all form fields except document type
-            this.resetFormForDocumentTypeChange(docTypeValue);
-            
-            // Reset results table
-            this.documents.set([]);
-            this.hasSearched = false;
-            
-            // Reset pagination
-            this.pageIndex.set(0);
-            this.totalItems.set(0);
-            
-            // Update UI
-            this.cdr.detectChanges();
-          });
-          
-          return; // Exit early since we've handled everything
-        }
+        // For debugging
+        console.log(`Field ${field} updated to: ${value}`);
+        console.log('Current search params:', this.searchParams());
+
+        return;
       }
-      
-      // Handle normal field updates
-      updatedParams[field] = value || '';
-      this.searchParams.set(updatedParams as SearchParams);
-      
-      // For debugging
-      console.log(`Field ${field} updated to: ${value}`);
-      console.log('Current search params:', this.searchParams());
+
+      // Ensure value is a string
+      const docTypeValue: string = value || '';
+        
+      // Check if the value is actually different
+      if (currentParams.documentType !== docTypeValue) {
+        // Reset the form except for document type
+        this.ngZone.run(() => {
+          // First update the document type value
+          updatedParams[field] = docTypeValue;
+          this.searchParams.set(updatedParams as SearchParams);
+          
+          // Update displayed columns
+          this.displayedColumns.set(
+            docTypeValue === 'incoming' ? this.incomingColumns : this.outgoingColumns
+          );
+          
+          // Reset all form fields except document type
+          this.resetFormForDocumentTypeChange(docTypeValue);
+          
+          // Reset results table
+          this.documents.set([]);
+          this.hasSearched = false;
+          
+          // Reset pagination
+          this.resetPageIndex()
+          this.totalItems.set(0);
+          
+          // Update UI
+          this.cdr.detectChanges();
+        });
+        
+        return; // Exit early since we've handled everything
+      }
     } catch (error) {
       console.error('Error updating field value:', error);
     }
