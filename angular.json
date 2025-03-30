@@ -32,7 +32,6 @@
               }
             ],
             "styles": [
-              "node_modules/ngx-toastr/toastr.css",
               "@angular/material/prebuilt-themes/magenta-violet.css",
               "src/styles.scss"
             ],
@@ -99,7 +98,6 @@
               }
             ],
             "styles": [
-              "node_modules/ngx-toastr/toastr.css",
               "@angular/material/prebuilt-themes/magenta-violet.css",
               "src/styles.scss"
             ],

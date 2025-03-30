@@ -8,10 +8,10 @@
         <div class="mb-3">
           <cc-select
             #selectDocumentType
-            (valueChange)="updateSearchParam('documentType', $event)"
             label="Loại văn bản"
             [options]="documentTypeOptions"
-            [defaultValue]="'incoming'"
+            [defaultValue]="searchParams().documentType || 'incoming'"
+            (valueChange)="onChange('documentType', $event || '')"
           ></cc-select>
         </div>
       </div>
@@ -23,17 +23,19 @@
             <div class="col">
               <cc-date-picker
                 #datePickerFrom
-                (valueChange)="updateSearchParam('issuedDateFrom', $event)"
+                (valueChange)="onChange('issuedDateFrom', $event || '')"
                 label="Ngày văn bản từ"
                 [format]="'DD/MM/YYYY'"
+                [value]="searchParams().issuedDateFrom || ''"
               ></cc-date-picker>
             </div>
             <div class="col">
               <cc-date-picker
                 #datePickerTo
-                (valueChange)="updateSearchParam('issuedDateTo', $event)"
+                (valueChange)="onChange('issuedDateTo', $event || '')"
                 label="Đến ngày"
                 [format]="'DD/MM/YYYY'"
+                [value]="searchParams().issuedDateTo || ''"
               ></cc-date-picker>
             </div>
           </div>
@@ -43,8 +45,9 @@
         <div class="mb-3">
           <cc-input
             #inputNumber
-            (valueChange)="updateSearchParam('referenceNumber', $event)"
+            (valueChange)="onChange('referenceNumber', $event || '')"
             label="Số ký hiệu"
+            [value]="searchParams().referenceNumber || ''"
           ></cc-input>
         </div>
       </div>
@@ -54,8 +57,9 @@
         <div class="mb-3">
           <cc-input
             #inputAuthor
-            (valueChange)="updateSearchParam('author', $event)"
+            (valueChange)="onChange('author', $event || '')"
             label="Tác giả"
+            [value]="searchParams().author || ''"
           ></cc-input>
         </div>
       </div>
@@ -63,8 +67,9 @@
         <div class="mb-3">
           <cc-input
             #inputSummary
-            (valueChange)="updateSearchParam('summary', $event)"
+            (valueChange)="onChange('summary', $event || '')"
             label="Trích yếu"
+            [value]="searchParams().summary || ''"
           ></cc-input>
         </div>
       </div>
@@ -76,11 +81,17 @@
   </div>
 
   <!-- Bảng hiển thị kết quả - chỉ hiển thị khi có kết quả và đã tìm kiếm -->
-  <div class="main-container__result mt-3" *ngIf="hasSearched && documents().length > 0">
-    <h3>Bảng hiển thị kết quả tìm kiếm</h3>
+  <div class="main-container__result mt-3" *ngIf="hasSearched && paginatedDocuments().length > 0">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h3>Bảng hiển thị kết quả tìm kiếm</h3>
+      <div class="d-flex gap-2">
+        <cc-button title="Xuất Excel" mode="primary" (onClick)="exportToExcel()"></cc-button>
+        <cc-button title="Xuất Word" mode="secondary" (onClick)="exportToWord()"></cc-button>
+      </div>
+    </div>
     
     <div class="table-container">
-      <table mat-table [dataSource]="documents()" class="mat-elevation-z8 demo-table">
+      <table mat-table [dataSource]="paginatedDocuments()" class="mat-elevation-z8 demo-table">
         <!-- Cột STT -->
         <ng-container matColumnDef="stt">
           <th mat-header-cell *matHeaderCellDef>TT</th>
@@ -137,7 +148,7 @@
         <!-- Cột Tác giả -->
         <ng-container matColumnDef="author">
           <th mat-header-cell *matHeaderCellDef>Tác giả</th>
-          <td mat-cell *matCellDef="let document">{{ document?.author || '' }}</td>
+          <td mat-cell *matCellDef="let document">{{ document?.author || document?.signedBy || '' }}</td>
         </ng-container>
 
         <!-- Cột Trích yếu -->
@@ -182,7 +193,7 @@
   </div>
   
   <!-- Hiển thị thông báo khi đã tìm kiếm nhưng không có kết quả -->
-  <div class="main-container__no-result mt-3" *ngIf="hasSearched && documents().length === 0">
+  <div class="main-container__no-result mt-3" *ngIf="hasSearched && paginatedDocuments().length === 0">
     <div class="alert alert-info">
       Không tìm thấy kết quả nào phù hợp với tiêu chí tìm kiếm.
     </div>
