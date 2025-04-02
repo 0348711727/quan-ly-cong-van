@@ -2,43 +2,13 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClientService } from './http-client.service';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-
-export interface SearchParams {
-  documentType: string;
-  issuedDateFrom?: string;
-  issuedDateTo?: string;
-  author?: string;
-  referenceNumber?: string;
-  summary?: string;
-}
-
-export interface Document {
-  referenceNumber: string;
-  issuedDate: Date | null;
-  author: string;
-  summary: string;
-}
-
-export interface PaginationResponse {
-  message: string;
-  data: {
-    documents: any[];
-    pagination: {
-      totalItems: number;
-      totalPages: number;
-      currentPage: number;
-      pageSize: number;
-    }
-  }
-}
+import { SearchParams } from '../commons/constants';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DocumentService {
   private httpClientService = inject(HttpClientService);
-  private apiUrl = 'http://localhost:3000';
 
   constructor(private http: HttpClient) {}
 

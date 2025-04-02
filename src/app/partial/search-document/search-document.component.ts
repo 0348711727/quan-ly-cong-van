@@ -7,8 +7,6 @@ import {
   ViewChild,
   WritableSignal,
   ChangeDetectionStrategy,
-  computed,
-  DestroyRef,
   ChangeDetectorRef,
   NgZone,
   AfterViewInit,
@@ -20,39 +18,22 @@ import { MatTableModule } from '@angular/material/table';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
-import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable } from 'rxjs';
 import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
 import { CcDatePickerComponent } from '../../commons/cc-date-picker/cc-date-picker.component';
 import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
 import { CcSelectComponent } from '../../commons/cc-select/cc-select.component';
-import {
-  DocumentService,
-  SearchParams,
-} from '../../services/document.service';
-import * as XLSX from 'xlsx';
-import { Document, Packer, Paragraph, Table, TableCell, TableRow, HeadingLevel, BorderStyle } from 'docx';
+import {DocumentService} from '../../services/document.service';
+import { ExportService } from '../../services/export.service';
+import { SearchParams, SearchResultDocument } from '../../commons/constants';
 
-// Extended interface for local use
-interface SearchResultDocument {
-  id: number;
-  documentNumber?: string;
-  receivedDate?: string;
-  issuedDate: string; // The original date as string
-  referenceNumber: string;
-  author: string;
-  summary: string;
-  priority?: string;
-  dueDate?: string;
-  type?: string;
-  receivingMethod?: string;
-  attachments?: string[];
-  processingOpinion?: string;
-  status?: string;
-  signedBy?: string;
-  // For sorting
-  issuedDateObj?: Date | null;
+interface PaginatedDocument extends SearchResultDocument {
+  attachmentDetails: Array<AttachmentDetail>;
+}
+
+interface AttachmentDetail {
+  fileName: string;
+  fileUrl: string;
 }
 
 // Type for the entire response
@@ -108,8 +89,8 @@ const emptySearchForm: SearchParams = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SearchDocumentComponent implements OnInit, AfterViewInit {
-  private destroyRef = inject(DestroyRef);
   protected documentService = inject(DocumentService);
+  protected exportService = inject(ExportService);
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
 
@@ -117,7 +98,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   searchParams: WritableSignal<SearchParams> = signal({ ...emptySearchForm });
   
   // UI state signals
-  paginatedDocuments: WritableSignal<SearchResultDocument[]> = signal([]);
+  paginatedDocuments: WritableSignal<PaginatedDocument[]> = signal([]);
   filteredDocuments: WritableSignal<SearchResultDocument[]> = signal([]);
   loading: WritableSignal<boolean> = signal(false);
   hasSearched: boolean = false;
@@ -275,7 +256,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     });
   }
   
-  private displaySearchResult(response: SearchDataResponse) {
+  private async displaySearchResult(response: SearchDataResponse) {
     try {
       const {
         data: { paginatedDocuments, pagination },
@@ -285,9 +266,9 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       this.totalItems.set(pagination.totalItems);
       
       // Keep dates as strings for display, but add additional properties for sorting
-      const docs = paginatedDocuments.map((doc) => {
-        return {...doc, issuedDateObj: this.formatDate(doc.issuedDate)};
-      });
+      const docs = await Promise.all(paginatedDocuments.map((document) => this.mappingDataForDisplaying(document)));
+
+      console.log({docs});
       
       // Update documents signal
       this.paginatedDocuments.set(docs);
@@ -316,6 +297,43 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       this.cdr.detectChanges();
     }
   }
+
+  private async mappingDataForDisplaying(document: SearchResultDocument) {
+    const attachmentData = await this.getAttachmentUrls(document.attachments);
+    return {
+      ...document,
+      attachmentDetails: attachmentData,
+      issuedDateObj: this.formatDate(document.issuedDate)
+    }
+  }
+
+  private async getAttachmentUrls(attachments: string[] | undefined): Promise<AttachmentDetail[]> {
+    if (!attachments) return [];
+
+    try {
+      const urlPromises = attachments.map(async (attachment) => {
+        return new Promise<AttachmentDetail>((resolve, reject) => {
+          this.documentService.downloadAttachment$(attachment, this.searchParams().documentType)
+            .subscribe({
+              next: (blob: any) => {
+                const url = window.URL.createObjectURL(blob);
+                resolve({fileName: attachment, fileUrl: url});
+              },
+              error: (err: any) => {
+                console.error('Error downloading attachment:', err);
+                reject(err);
+              }
+            });
+        });
+      });
+      
+      return await Promise.all(urlPromises);
+    } catch (error) {
+      console.error('Error retrieving attachment URLs:', error);
+      return [];
+    }
+  }
+
   public handleSearch(searchParams: any) {
     if (searchParams.documentType === 'incoming') {
       this.searchDocuments(
@@ -468,30 +486,17 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges();
   }
 
-  downloadAttachment(fileName: string) {
+  downloadAttachment(fileUrl: string, fileName: string) {
     this.showNoAttachmentsMessage.set(false);
 
-    const documentType = this.selectDocumentType.value as string;
-      
-    this.documentService.downloadAttachment$(fileName, documentType).subscribe({
-      next: (blob: any) => {
-        // Create URL for blob and download
-        const url = window.URL.createObjectURL(blob);
-        const a = window.document.createElement('a');
-        a.href = url;
-        a.download = this.getShortFileName(fileName); // Use shorter name
-        window.document.body.appendChild(a);
-        a.click();
+    const a = document.createElement('a');
+    a.href = fileUrl;
+    a.download = this.getShortFileName(fileName);
+    a.click();
 
-        // Cleanup
-        window.URL.revokeObjectURL(url);
-        window.document.body.removeChild(a);
-      },
-      error: (error: unknown) => {
-        console.error('Error downloading attachment', error);
-        alert('Unable to download attachment. Please try again later.');
-      },
-    });
+    // Cleanup
+    window.URL.revokeObjectURL(fileUrl);
+    window.document.body.removeChild(a);
   }
 
   /**
@@ -651,9 +656,10 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   exportToExcel(): void {
     try {
       this.loading.set(true);
-      this.processAndExportData(this.filteredDocuments());
+      this.exportService.processAndExportDataToExcel(this.filteredDocuments(), this.searchParams().documentType);
     } catch (error) {
       console.error('Lỗi khi xuất file Excel:', error);
+    } finally {
       this.loading.set(false);
     }
   }
@@ -664,312 +670,10 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   exportToWord(): void {
     try {
       this.loading.set(true);
-      
-      // Kiểm tra dữ liệu
-      const documents = this.filteredDocuments();
-      if (documents.length === 0) {
-        console.warn('Không có dữ liệu để xuất');
-        this.loading.set(false);
-        return;
-      }
-      
-      // Tạo mảng header cho bảng Word
-      let headerRow: TableRow;
-      if (this.searchParams().documentType === 'incoming') {
-        headerRow = new TableRow({
-          children: [
-            new TableCell({ 
-              children: [new Paragraph({ text: 'TT', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Số đến', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Ngày đến', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Số ký hiệu', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Ngày văn bản', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Hạn xử lý', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Tác giả', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Trích yếu', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-          ],
-        });
-      } else {
-        headerRow = new TableRow({
-          children: [
-            new TableCell({ 
-              children: [new Paragraph({ text: 'TT', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Số ký hiệu', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Ngày văn bản', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Tác giả', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-            new TableCell({ 
-              children: [new Paragraph({ text: 'Trích yếu', alignment: 'center' })],
-              shading: { color: "auto", fill: "D3D3D3" }, 
-            }),
-          ],
-        });
-      }
-      
-      // Tạo các hàng dữ liệu
-      const rows: TableRow[] = [headerRow];
-      
-      documents.forEach((doc, index) => {
-        if (this.searchParams().documentType === 'incoming') {
-          // Hàng dữ liệu cho văn bản đến
-          const dataRow = new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ text: (index + 1).toString(), alignment: 'center' })] }),
-              new TableCell({ children: [new Paragraph(doc.documentNumber || '')] }),
-              new TableCell({ children: [new Paragraph({ text: doc.receivedDate, alignment: 'center' })] }),
-              new TableCell({ children: [new Paragraph(doc.referenceNumber || '')] }),
-              new TableCell({ children: [new Paragraph({ text: doc.issuedDate, alignment: 'center' })] }),
-              new TableCell({ children: [new Paragraph({ text: doc.dueDate, alignment: 'center' })] }),
-              new TableCell({ children: [new Paragraph(doc.author || '')] }),
-              new TableCell({ children: [new Paragraph(doc.summary || '')] }),
-            ],
-          });
-          rows.push(dataRow);
-        } else {
-          // Hàng dữ liệu cho văn bản đi
-          const dataRow = new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ text: (index + 1).toString(), alignment: 'center' })] }),
-              new TableCell({ children: [new Paragraph(doc.referenceNumber || '')] }),
-              new TableCell({ children: [new Paragraph({ text: doc.issuedDate, alignment: 'center' })] }),
-              new TableCell({ children: [new Paragraph(doc.signedBy || '')] }),
-              new TableCell({ children: [new Paragraph(doc.summary || '')] }),
-            ],
-          });
-          rows.push(dataRow);
-        }
-      });
-      
-      // Tạo bảng
-      const table = new Table({
-        rows,
-        width: {
-          size: 100,
-          type: 'pct',
-        },
-        borders: {
-          top: { style: BorderStyle.SINGLE, size: 1, color: "auto" },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: "auto" },
-          left: { style: BorderStyle.SINGLE, size: 1, color: "auto" },
-          right: { style: BorderStyle.SINGLE, size: 1, color: "auto" },
-          insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "auto" },
-          insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "auto" },
-        },
-        columnWidths: this.searchParams().documentType === 'incoming' ? 
-          [600, 800, 1200, 1200, 1200, 1200, 1800, 3000] : 
-          [600, 1500, 1200, 1800, 4000],
-      });
-      
-      // Tạo tiêu đề
-      const title = new Paragraph({
-        text: this.searchParams().documentType === 'incoming' ? 'DANH SÁCH VĂN BẢN ĐẾN' : 'DANH SÁCH VĂN BẢN ĐI',
-        heading: HeadingLevel.HEADING_1,
-        alignment: 'center',
-      });
-      
-      // Tạo thông tin tìm kiếm
-      const searchInfo = [];
-      if (this.searchParams().issuedDateFrom) {
-        searchInfo.push(new Paragraph(`Từ ngày: ${this.searchParams().issuedDateFrom}`));
-      }
-      if (this.searchParams().issuedDateTo) {
-        searchInfo.push(new Paragraph(`Đến ngày: ${this.searchParams().issuedDateTo}`));
-      }
-      if (this.searchParams().referenceNumber) {
-        searchInfo.push(new Paragraph(`Số ký hiệu: ${this.searchParams().referenceNumber}`));
-      }
-      if (this.searchParams().author) {
-        searchInfo.push(new Paragraph(`Tác giả: ${this.searchParams().author}`));
-      }
-      if (this.searchParams().summary) {
-        searchInfo.push(new Paragraph(`Trích yếu: ${this.searchParams().summary}`));
-      }
-
-      const formatDateString = (dateStr?: string) => {
-        if (!dateStr) return '';
-        try {
-          const date = new Date(dateStr);
-          if (isNaN(date.getTime())) return dateStr;
-          
-          // Định dạng thành DD/MM/YYYY
-          const day = date.getDate().toString().padStart(2, '0');
-          const month = (date.getMonth() + 1).toString().padStart(2, '0');
-          const year = date.getFullYear();
-          
-          return `${day}/${month}/${year}`;
-        } catch {
-          return dateStr;
-        }
-      };
-      
-      // Tạo ngày xuất báo cáo
-      const reportDate = new Paragraph({
-        text: `Ngày xuất báo cáo: ${formatDateString(new Date().toISOString())}`,
-        alignment: 'right',
-      });
-      
-      // Tạo document
-      const doc = new Document({
-        sections: [
-          {
-            properties: {},
-            children: [
-              title,
-              ...searchInfo,
-              reportDate,
-              new Paragraph(" "), // Khoảng trống
-              table,
-            ],
-          },
-        ],
-      });
-      
-      // Xuất file
-      Packer.toBlob(doc).then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        document.body.appendChild(a);
-        a.style.display = "none";
-        
-        const documentType = this.searchParams().documentType === 'incoming' ? 'Văn bản đến' : 'Văn bản đi';
-        const fileName = `${documentType}_${new Date().toLocaleDateString('vi-VN')}.docx`;
-        
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        
-        this.loading.set(false);
-      });
-      
+      this.exportService.processAndExportDataToWord(this.filteredDocuments(), this.searchParams());
     } catch (error) {
       console.error('Lỗi khi xuất file Word:', error);
-      this.loading.set(false);
-    }
-  }
-  
-  /**
-   * Xử lý và xuất dữ liệu ra file Excel
-   */
-  private processAndExportData(documents: SearchResultDocument[]): void {
-    try {
-      if (documents.length === 0) {
-        console.warn('Không có dữ liệu để xuất');
-        this.loading.set(false);
-        return;
-      }
-      
-      // Tạo dữ liệu xuất theo thứ tự cột giống UI
-      const exportData = documents.map((doc, index) => {
-        // Base data cho cả văn bản đến và văn bản đi
-        const data: any = {
-          'TT': index + 1,
-        };
-
-        console.log(doc.issuedDate, 999);
-        
-        // Thêm dữ liệu theo thứ tự cột giống UI
-        if (this.searchParams().documentType === 'incoming') {
-          // Thứ tự cột cho văn bản đến
-          data['Số đến'] = doc.documentNumber || '';
-          data['Ngày đến'] = doc.receivedDate;
-          data['Số ký hiệu'] = doc.referenceNumber || '';
-          data['Ngày văn bản'] = doc.issuedDate;
-          data['Hạn xử lý'] = doc.dueDate;
-          data['Tác giả'] = doc.author || '';
-          data['Trích yếu'] = doc.summary || '';
-          data["Nội dung"] = doc.attachments?.join(', ') || '';
-        } else {
-          // Thứ tự cột cho văn bản đi
-          data['Số ký hiệu'] = doc.referenceNumber || '';
-          data['Ngày văn bản'] = doc.issuedDate;
-          data['Tác giả'] = doc.signedBy || '';
-          data['Trích yếu'] = doc.summary || '';
-          data["Nội dung"] = doc.attachments?.join(', ') || '';
-        }
-        
-        return data;
-      });
-
-      console.log(exportData, 999);
-      
-      // Tạo workbook Excel từ dữ liệu
-      const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(exportData);
-      
-      // Điều chỉnh chiều rộng cột cho dễ đọc
-      let columnsWidth: any[] = [];
-      
-      if (this.searchParams().documentType === 'incoming') {
-        columnsWidth = [
-          { wch: 5 },  // TT
-          { wch: 10 }, // Số đến
-          { wch: 15 }, // Ngày đến  
-          { wch: 15 }, // Số ký hiệu
-          { wch: 15 }, // Ngày văn bản
-          { wch: 15 }, // Hạn xử lý
-          { wch: 25 }, // Tác giả
-          { wch: 50 }, // Trích yếu
-          { wch: 50 }, // Nội dung
-        ];
-      } else {
-        columnsWidth = [
-          { wch: 5 },  // TT
-          { wch: 15 }, // Số ký hiệu
-          { wch: 15 }, // Ngày văn bản
-          { wch: 25 }, // Tác giả
-          { wch: 50 }, // Trích yếu
-          { wch: 50 }, // Nội dung
-        ];
-      }
-      
-      worksheet['!cols'] = columnsWidth;
-      
-      const workbook: XLSX.WorkBook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Kết quả tìm kiếm');
-      
-      // Tạo tên file xuất ra
-      const documentType = this.searchParams().documentType === 'incoming' ? 'Văn bản đến' : 'Văn bản đi';
-      const fileName = `${documentType}_${new Date().toLocaleDateString('vi-VN')}.xlsx`;
-      
-      // Xuất file Excel
-      XLSX.writeFile(workbook, fileName);
-      
-      this.loading.set(false);
-    } catch (error) {
-      console.error('Lỗi khi xử lý và xuất dữ liệu Excel:', error);
+    } finally {
       this.loading.set(false);
     }
   }

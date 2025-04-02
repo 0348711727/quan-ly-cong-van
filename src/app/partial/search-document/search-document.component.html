@@ -161,16 +161,16 @@
         <ng-container matColumnDef="attachments">
           <th mat-header-cell *matHeaderCellDef>Nội dung</th>
           <td mat-cell *matCellDef="let document">
-            <div class="attachment-list" *ngIf="document?.attachments && document.attachments.length > 0">
-              <div class="attachment-item" *ngFor="let attachment of document.attachments">
+            <div class="attachment-list" *ngIf="document?.attachmentDetails && document.attachmentDetails.length > 0">
+              <div class="attachment-item" *ngFor="let attachment of document.attachmentDetails">
                 <a class="file-name" 
-                   (click)="downloadAttachment(attachment); $event.preventDefault()"
+                   (click)="downloadAttachment(attachment.fileUrl, attachment.fileName); $event.preventDefault()"
                    href="javascript:void(0)">
-                  <i class="pi pi-file mr-1"></i> {{ getShortFileName(attachment) }}
+                  <i class="pi pi-file mr-1"></i> {{ getShortFileName(attachment.fileName) }}
                 </a>
               </div>
             </div>
-            <div class="no-attachment" *ngIf="!document?.attachments || document.attachments.length === 0">
+            <div class="no-attachment" *ngIf="!document?.attachmentDetails || document.attachmentDetails.length === 0">
               Không có tệp đính kèm
             </div>
           </td>
