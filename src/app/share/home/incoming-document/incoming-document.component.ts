@@ -2,20 +2,19 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   EventEmitter,
-  Input,
-  Output,
   OnInit,
+  Output,
+  computed,
   inject,
   signal,
-  computed,
 } from '@angular/core';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
-import { MOVE_CV } from '../../constant';
-import { DocumentService } from '../../../services/document.service';
 import { MessageService } from 'primeng/api';
+import { DocumentService } from '../../../services/document.service';
+import { MOVE_CV } from '../../constant';
 import { RecipientLabelPipe } from '../../pipes/recipient-label.pipe';
 
 @Component({
@@ -185,6 +184,7 @@ export class IncomingDocumentComponent implements OnInit {
       .updateDocumentStatus(document.documentNumber, 'finished')
       .subscribe({
         next: (response: any) => {
+          this.documentService.currentAdd.set('');
           const allDocs = this.allDocuments();
           const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
 
@@ -266,12 +266,8 @@ export class IncomingDocumentComponent implements OnInit {
       this.recentlyFinishedDoc.set(document.id);
 
       // Update total elements in pagination
-      const waitingDocs = newAllDocs.filter(
-        (doc) => doc.status === 'waiting'
-      );
-      const finishedDocs = newAllDocs.filter(
-        (doc) => doc.status !== 'waiting'
-      );
+      const waitingDocs = newAllDocs.filter((doc) => doc.status === 'waiting');
+      const finishedDocs = newAllDocs.filter((doc) => doc.status !== 'waiting');
       this.waitingTotalItems.set(waitingDocs.length);
       this.finishedTotalItems.set(finishedDocs.length);
 
@@ -302,4 +298,4 @@ export class IncomingDocumentComponent implements OnInit {
       }
     }
   }
-} 
+}

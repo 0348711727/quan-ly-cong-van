@@ -36,5 +36,6 @@
   "choose": "Chọn công văn",
   "signedBy": "Người ký văn bản",
   "signerPosition": "Chức vụ người ký",
-  "externalRecipient": "Nơi nhận bên ngoài"
+  "externalRecipient": "Nơi nhận bên ngoài",
+  "cancelAll": "Hủy tải lên"
 }

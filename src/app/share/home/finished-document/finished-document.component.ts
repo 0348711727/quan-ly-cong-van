@@ -3,12 +3,14 @@ import {
   AfterViewChecked,
   Component,
   EventEmitter,
+  inject,
   Input,
   Output,
 } from '@angular/core';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
+import { DocumentService } from '../../../services/document.service';
 import { RecipientLabelPipe } from '../../../share/pipes/recipient-label.pipe';
 
 @Component({
@@ -60,7 +62,7 @@ export class FinishedDocumentComponent implements AfterViewChecked {
 
   @Output() pageChanged = new EventEmitter<PageEvent>();
   @Output() openDialog = new EventEmitter<void>();
-
+  protected documentService: DocumentService = inject(DocumentService);
   private previousFinishedDocId: string | null = null;
 
   ngAfterViewChecked() {

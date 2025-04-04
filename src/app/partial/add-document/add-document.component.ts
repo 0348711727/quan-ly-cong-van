@@ -3,6 +3,7 @@ import {
   inject,
   Signal,
   signal,
+  viewChild,
   WritableSignal,
 } from '@angular/core';
 import { MatLabel } from '@angular/material/form-field';
@@ -17,6 +18,7 @@ import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
 import { CcDatePickerComponent } from '../../commons/cc-date-picker/cc-date-picker.component';
 import { CcDropdownComponent } from '../../commons/cc-dropdown/cc-dropdown.component';
 import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
+import { DocumentService } from '../../services/document.service';
 import { HttpClientService } from '../../services/http-client.service';
 import { MESSAGE_CODES, MOVE_CV } from '../../share/constant';
 
@@ -40,6 +42,7 @@ export type Dropdown = { label: string; value: string | null }[];
 export class AddDocumentComponent {
   protected messageService: MessageService = inject(MessageService);
   protected httpCientService: HttpClientService = inject(HttpClientService);
+  protected documentService: DocumentService = inject(DocumentService);
   protected router: Router = inject(Router);
   emptyBody = {
     receivedDate: '',
@@ -100,7 +103,8 @@ export class AddDocumentComponent {
       { label: MOVE_CV.NHAN_VIEN, value: 'staff' },
     ],
   });
-  files: any = signal('');
+  upload: Signal<FileUpload> = viewChild.required('fu');
+  files: WritableSignal<File[]> = signal([]);
   constructor() {
     const navigation = this.router.getCurrentNavigation();
     const state = navigation?.extras.state;
@@ -124,7 +128,7 @@ export class AddDocumentComponent {
     this.files.set(event.currentFiles);
   }
   onRemove() {
-    this.files.set(null);
+    this.files.set([]);
   }
   cancel() {
     this.router.navigate(['../']);
@@ -157,6 +161,7 @@ export class AddDocumentComponent {
             this.error.set(data.errors);
             return;
           }
+          this.documentService.currentAdd.set(data.document.id);
           this.body.set(this.emptyBody);
           this.error.set({});
           this.router.navigateByUrl('');
@@ -168,7 +173,7 @@ export class AddDocumentComponent {
   }
   saveDocument$() {
     const body = new FormData();
-    for (const file of (this.files() as FileUpload)?._files) {
+    for (const file of this.files()) {
       if (!file) return;
       body.append('attachments', file);
     }
@@ -192,7 +197,8 @@ export class AddDocumentComponent {
           }
           this.body.set(this.emptyBody);
           this.error.set({});
-          this.files().set(null);
+          this.files.set([]);
+          this.upload().clear();
           this.messageService.add({
             severity: 'success',
             summary: 'Success Message',

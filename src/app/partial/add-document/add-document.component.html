@@ -8,7 +8,7 @@
       <div class="col-3">
         <cc-date-picker
           [value]="body().receivedDate"
-          [errorMessage]="this.error()?.['receivedDate']?.[0]?.message"
+          [errorMessage]="(this.error()?.['receivedDate']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('receivedDate', $event)"
           label="receivedDate"
         />
@@ -16,7 +16,7 @@
       <div class="col-3">
         <cc-date-picker
           [value]="body().issuedDate"
-          [errorMessage]="this.error()?.['issuedDate']?.[0]?.message"
+          [errorMessage]="(this.error()?.['issuedDate']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('issuedDate', $event)"
           label="issuedDate"
         />
@@ -24,7 +24,7 @@
       <div class="col-3">
         <cc-input
           [value]="body().referenceNumber"
-          [errorMessage]="this.error()?.['referenceNumber']?.[0]?.message"
+          [errorMessage]="(this.error()?.['referenceNumber']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('referenceNumber', $event)"
           label="referenceNumber"
         />
@@ -33,7 +33,7 @@
         <cc-dropdown
           [listDropdown]="dropdown().priority"
           [value]="body().priority"
-          [errorMessage]="this.error()?.['priority']?.[0]?.message"
+          [errorMessage]="(this.error()?.['priority']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('priority', $event)"
           label="priority"
         />
@@ -45,14 +45,14 @@
           [listDropdown]="dropdown().documentType"
           [value]="body().type"
           (valueChange)="onChange('type', $event)"
-          [errorMessage]="this.error()?.['type']?.[0]?.message"
+          [errorMessage]="(this.error()?.['type']?.[0]?.code | translateAsync) ?? ''"
           label="type"
         />
       </div>
       <div class="col-3">
         <cc-input
           [value]="body().author"
-          [errorMessage]="this.error()?.['author']?.[0]?.message"
+          [errorMessage]="(this.error()?.['author']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('author', $event)"
           label="author"
         />
@@ -60,7 +60,7 @@
       <div class="col-3">
         <cc-input
           [value]="body().summary"
-          [errorMessage]="this.error()?.['summary']?.[0]?.message"
+          [errorMessage]="(this.error()?.['summary']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('summary', $event)"
           label="summary"
         />
@@ -69,7 +69,7 @@
         <cc-dropdown
           [listDropdown]="dropdown().receivingMethod"
           [value]="body().receivingMethod"
-          [errorMessage]="this.error()?.['receivingMethod']?.[0]?.message"
+          [errorMessage]="(this.error()?.['receivingMethod']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('receivingMethod', $event)"
           label="receivingMethod"
         />
@@ -79,7 +79,7 @@
       <div class="col-3">
         <cc-date-picker
           [value]="body().dueDate"
-          [errorMessage]="this.error()?.['dueDate']?.[0]?.message"
+          [errorMessage]="(this.error()?.['dueDate']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('dueDate', $event)"
           label="dueDate"
         />
@@ -87,7 +87,7 @@
       <div class="col-3">
         <cc-input
           [value]="body().processingOpinion"
-          [errorMessage]="this.error()?.['processingOpinion']?.[0]?.message"
+          [errorMessage]="(this.error()?.['processingOpinion']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('processingOpinion', $event)"
           label="processingOpinion"
         />
@@ -97,7 +97,7 @@
         <cc-dropdown
           [listDropdown]="dropdown().internalRecipient"
           [value]="body().internalRecipient ?? ''"
-          [errorMessage]="this.error()?.['internalRecipient']?.[0]?.message"
+          [errorMessage]="(this.error()?.['internalRecipient']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('internalRecipient', $event)"
           label="internalRecipient"
         />
@@ -112,6 +112,7 @@
         [multiple]="true"
         mode="advanced"
         [chooseLabel]="('choose' | translateAsync) ?? ''"
+        [cancelLabel]="('cancelAll' | translateAsync) ?? ''"
         chooseIcon="pi pi-upload"
         [name]="this.body().attachments"
         maxFileSize="1000000"

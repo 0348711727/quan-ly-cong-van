@@ -210,7 +210,7 @@
           <a
             href="javascript:void(0)"
             class="text-success"
-            style="pointer-events: none;"
+            style="pointer-events: none"
             >Chuyển bổ sung</a
           >
         </div>
@@ -230,7 +230,11 @@
     <tr
       mat-row
       *matRowDef="let row; columns: finishedColumns()"
-      [ngClass]="{ 'highlight-row': row.id === recentlyFinishedDoc() }"
+      [ngClass]="{
+        'highlight-row':
+          row.id === recentlyFinishedDoc() ||
+          row.id === documentService.currentAdd()
+      }"
       [id]="'doc-' + row.id"
     ></tr>
   </table>
@@ -248,4 +252,4 @@
     aria-label="Select page"
   >
   </mat-paginator>
-</div> 
+</div>

@@ -3,6 +3,7 @@ import {
   inject,
   Signal,
   signal,
+  viewChild,
   WritableSignal,
 } from '@angular/core';
 import { MatLabel } from '@angular/material/form-field';
@@ -10,13 +11,14 @@ import { Router } from '@angular/router';
 import { L10nTranslateAsyncPipe } from 'angular-l10n';
 import _ from 'lodash';
 import { MessageService } from 'primeng/api';
-import { FileUploadModule } from 'primeng/fileupload';
+import { FileUpload, FileUploadModule } from 'primeng/fileupload';
 import { ToastModule } from 'primeng/toast';
 import { environment } from '../../../environments/environment';
 import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
 import { CcDatePickerComponent } from '../../commons/cc-date-picker/cc-date-picker.component';
 import { CcDropdownComponent } from '../../commons/cc-dropdown/cc-dropdown.component';
 import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
+import { DocumentService } from '../../services/document.service';
 import { HttpClientService } from '../../services/http-client.service';
 import { MESSAGE_CODES, MOVE_CV } from '../../share/constant';
 import { Dropdown } from '../add-document/add-document.component';
@@ -40,6 +42,7 @@ export class AddOutgoingDocumentComponent {
   protected messageService: MessageService = inject(MessageService);
   protected httpCientService: HttpClientService = inject(HttpClientService);
   protected router: Router = inject(Router);
+  protected documentService = inject(DocumentService);
   emptyBody = {
     issuedDate: '',
     referenceNumber: '',
@@ -51,7 +54,6 @@ export class AddOutgoingDocumentComponent {
     signerPosition: '',
     attachments: '',
     internalRecipient: '',
-    externalRecipient: '',
     status: 'waiting',
   };
   body: WritableSignal<{
@@ -66,7 +68,6 @@ export class AddOutgoingDocumentComponent {
     signerPosition: string;
     attachments: string;
     internalRecipient?: string;
-    externalRecipient: string;
   }> = signal(this.emptyBody);
   error: WritableSignal<any> = signal({});
   documentTitle: WritableSignal<string> = signal('Tạo');
@@ -104,7 +105,8 @@ export class AddOutgoingDocumentComponent {
       { label: 'Phó Hiệu trưởng', value: 'Phó Hiệu trưởng' },
     ],
   });
-  files: any = signal('');
+  upload: Signal<FileUpload> = viewChild.required('fu');
+  files: any = signal([]);
   constructor() {
     const navigation = this.router.getCurrentNavigation();
     const state = navigation?.extras.state;
@@ -161,6 +163,7 @@ export class AddOutgoingDocumentComponent {
             this.error.set(data.errors);
             return;
           }
+          this.documentService.currentAdd.set(data.document.id);
           this.body.set(this.emptyBody);
           this.error.set({});
           this.router.navigateByUrl('');
@@ -172,10 +175,10 @@ export class AddOutgoingDocumentComponent {
   }
   saveDocument$() {
     const body = new FormData();
-    // for (const file of (this.files() as FileUpload)?._files) {
-    //   if (!file) return;
-    //   body.append('attachments', file);
-    // }
+    for (const file of this.files()) {
+      if (!file) return;
+      body.append('attachments', file);
+    }
 
     const jsonBody: any = _.cloneDeep(this.body());
     for (const key in jsonBody) {
@@ -196,16 +199,18 @@ export class AddOutgoingDocumentComponent {
           }
           this.body.set(this.emptyBody);
           this.error.set({});
-          // this.files().set(null);
+          this.files.set([]);
+          this.upload().clear();
           this.messageService.add({
             severity: 'success',
+            summary: 'Thành công',
             detail: 'Thêm công văn thành công',
           });
         },
         error: ({ error }) => {
           this.messageService.add({
             severity: 'error',
-            detail: 'Something went wrong',
+            detail: 'Có lỗi xảy ra',
           });
           this.error.set(error.errors);
         },

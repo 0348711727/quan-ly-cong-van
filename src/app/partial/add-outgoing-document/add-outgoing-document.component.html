@@ -8,7 +8,7 @@
       <div class="col-3">
         <cc-date-picker
           [value]="body().issuedDate"
-          [errorMessage]="this.error()?.['issuedDate']?.[0]?.message"
+          [errorMessage]="(this.error()?.['issuedDate']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('issuedDate', $event)"
           label="issuedDate"
         />
@@ -16,7 +16,7 @@
       <div class="col-3">
         <cc-input
           [value]="body().referenceNumber"
-          [errorMessage]="this.error()?.['referenceNumber']?.[0]?.message"
+          [errorMessage]="(this.error()?.['referenceNumber']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('referenceNumber', $event)"
           label="referenceNumber"
         />
@@ -25,7 +25,7 @@
         <cc-dropdown
           [listDropdown]="dropdown().priority"
           [value]="body().priority"
-          [errorMessage]="this.error()?.['priority']?.[0]?.message"
+          [errorMessage]="(this.error()?.['priority']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('priority', $event)"
           label="priority"
         />
@@ -35,7 +35,7 @@
           [listDropdown]="dropdown().documentType"
           [value]="body().type"
           (valueChange)="onChange('type', $event)"
-          [errorMessage]="this.error()?.['type']?.[0]?.message"
+          [errorMessage]="(this.error()?.['type']?.[0]?.code | translateAsync) ?? ''"
           label="type"
         />
       </div>
@@ -45,7 +45,7 @@
         <cc-dropdown
           [listDropdown]="dropdown().signedBy"
           [value]="body().signedBy"
-          [errorMessage]="this.error()?.['signedBy']?.[0]?.message"
+          [errorMessage]="(this.error()?.['signedBy']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('signedBy', $event)"
           label="signedBy"
         />
@@ -54,7 +54,7 @@
         <cc-dropdown
           [listDropdown]="dropdown().signerPosition"
           [value]="body().signerPosition"
-          [errorMessage]="this.error()?.['signerPosition']?.[0]?.message"
+          [errorMessage]="(this.error()?.['signerPosition']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('signerPosition', $event)"
           label="signerPosition"
         />
@@ -62,24 +62,16 @@
       <div class="col-3">
         <cc-input
           [value]="body().summary"
-          [errorMessage]="this.error()?.['summary']?.[0]?.message"
+          [errorMessage]="(this.error()?.['summary']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('summary', $event)"
           label="summary"
-        />
-      </div>
-      <div class="col-3">
-        <cc-input
-          [value]="body().externalRecipient"
-          [errorMessage]="this.error()?.['externalRecipient']?.[0]?.message"
-          (valueChange)="onChange('externalRecipient', $event)"
-          label="externalRecipient"
         />
       </div>
       <div class="col-3">
         <cc-dropdown
           [listDropdown]="dropdown().internalRecipient"
           [value]="body().internalRecipient ?? ''"
-          [errorMessage]="this.error()?.['internalRecipient']?.[0]?.message"
+          [errorMessage]="(this.error()?.['internalRecipient']?.[0]?.code | translateAsync) ?? ''"
           (valueChange)="onChange('internalRecipient', $event)"
           label="internalRecipient"
         />
@@ -93,6 +85,7 @@
         [multiple]="true"
         mode="advanced"
         [chooseLabel]="('choose' | translateAsync) ?? ''"
+        [cancelLabel]="('cancelAll' | translateAsync) ?? ''"
         chooseIcon="pi pi-upload"
         [name]="this.body().attachments"
         maxFileSize="1000000"

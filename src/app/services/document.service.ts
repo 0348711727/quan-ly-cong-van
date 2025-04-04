@@ -1,8 +1,7 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { HttpClientService } from './http-client.service';
-import { HttpClient } from '@angular/common/http';
 import { SearchParams } from '../commons/constants';
+import { HttpClientService } from './http-client.service';
 
 @Injectable({
   providedIn: 'root',
@@ -10,7 +9,7 @@ import { SearchParams } from '../commons/constants';
 export class DocumentService {
   private httpClientService = inject(HttpClientService);
 
-  constructor(private http: HttpClient) {}
+  currentAdd: WritableSignal<string> = signal('');
 
   searchIncomingDocuments$(params: SearchParams) {
     return this.httpClientService.comonGet({
@@ -51,34 +50,46 @@ export class DocumentService {
   getDocuments(page: number = 1, pageSize: number = 10) {
     return this.httpClientService.comonGet({
       url: `${environment.RESOURCE_URL}/incoming-documents`,
-      params: { page, pageSize }
+      params: { page, pageSize },
     });
   }
 
   getOutgoingDocuments(page: number = 1, pageSize: number = 10) {
     return this.httpClientService.comonGet({
       url: `${environment.RESOURCE_URL}/outgoing-documents`,
-      params: { page, pageSize }
+      params: { page, pageSize },
     });
   }
 
-  updateDocumentStatus(documentNumber: string, status: string, isIncoming: boolean = true) {
-    const documentType = isIncoming ? 'incoming-documents' : 'outgoing-documents';
+  updateDocumentStatus(
+    documentNumber: string,
+    status: string,
+    isIncoming: boolean = true
+  ) {
+    const documentType = isIncoming
+      ? 'incoming-documents'
+      : 'outgoing-documents';
     return this.httpClientService.commonPatch({
       url: `${environment.RESOURCE_URL}/${documentType}/${documentNumber}/status`,
       headers: {},
       params: {},
-      body: { status }
+      body: { status },
     });
   }
 
-  updateDocument(documentNumber: string, updateData: any, isIncoming: boolean = true) {
-    const documentType = isIncoming ? 'incoming-documents' : 'outgoing-documents';
+  updateDocument(
+    documentNumber: string,
+    updateData: any,
+    isIncoming: boolean = true
+  ) {
+    const documentType = isIncoming
+      ? 'incoming-documents'
+      : 'outgoing-documents';
     return this.httpClientService.commonPatch({
       url: `${environment.RESOURCE_URL}/${documentType}/${documentNumber}`,
       headers: {},
       params: {},
-      body: updateData
+      body: updateData,
     });
   }
 }

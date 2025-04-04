@@ -192,6 +192,7 @@ export class OutgoingDocumentComponent implements OnInit {
       .updateDocumentStatus(document.documentNumber, 'finished', false)
       .subscribe({
         next: (response: any) => {
+          this.documentService.currentAdd.set('');
           const allDocs = this.allDocuments();
           const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
 
