@@ -7,7 +7,7 @@ export const EXCHANGE_RATE_VN_USD: number = 25000;
 export const LOCALE_STRING_VN: string = 'vi-VN';
 export const LOCALE_STRING_US: string = 'en-US';
 export interface SearchParams {
-  documentType: string;
+  documentType: "incoming-document" | "outgoing-document";
   issuedDateFrom?: string;
   issuedDateTo?: string;
   author?: string;
@@ -33,4 +33,9 @@ export interface SearchResultDocument {
   signedBy?: string;
   // For sorting
   issuedDateObj?: Date | null;
+}
+
+export interface AttachmentDetail {
+  fileName: string;
+  fileUrl: string;
 }

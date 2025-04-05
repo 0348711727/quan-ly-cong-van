@@ -25,15 +25,10 @@ import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
 import { CcSelectComponent } from '../../commons/cc-select/cc-select.component';
 import {DocumentService} from '../../services/document.service';
 import { ExportService } from '../../services/export.service';
-import { SearchParams, SearchResultDocument } from '../../commons/constants';
+import { AttachmentDetail, SearchParams, SearchResultDocument } from '../../commons/constants';
 
 interface PaginatedDocument extends SearchResultDocument {
   attachmentDetails: Array<AttachmentDetail>;
-}
-
-interface AttachmentDetail {
-  fileName: string;
-  fileUrl: string;
 }
 
 // Type for the entire response
@@ -59,13 +54,18 @@ interface Pagination {
 
 // Define the empty form state
 const emptySearchForm: SearchParams = {
-  documentType: 'incoming',
+  documentType: 'incoming-document',
   issuedDateFrom: '',
   issuedDateTo: '',
   author: '',
   referenceNumber: '',
   summary: ''
 };
+
+type DocumentTypeOptions = {
+  label: string;
+  value: "incoming-document" | "outgoing-document";
+}
 
 @Component({
   selector: 'app-search-document',
@@ -127,9 +127,9 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   displayedColumns: WritableSignal<string[]> = signal(this.incomingColumns);
 
   // Form options
-  documentTypeOptions = [
-    { value: 'incoming', label: 'Văn bản đến' },
-    { value: 'outgoing', label: 'Văn bản đi' },
+  documentTypeOptions: DocumentTypeOptions[] = [
+    { value: 'incoming-document', label: 'Văn bản đến' },
+    { value: 'outgoing-document', label: 'Văn bản đi' },
   ];
 
   // Pagination properties
@@ -139,7 +139,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   totalItems: WritableSignal<number> = signal(0);
 
   // ViewChild references for component access
-  @ViewChild('selectDocumentType') selectDocumentType!: CcSelectComponent;
+  @ViewChild('selectDocumentType') selectDocumentType!: CcSelectComponent<"incoming-document" | "outgoing-document">;
   @ViewChild('datePickerFrom') datePickerFrom!: CcDatePickerComponent;
   @ViewChild('datePickerTo') datePickerTo!: CcDatePickerComponent;
   @ViewChild('inputNumber') inputNumber!: CcInputComponent;
@@ -335,12 +335,12 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
   }
 
   public handleSearch(searchParams: any) {
-    if (searchParams.documentType === 'incoming') {
+    if (searchParams.documentType === 'incoming-document') {
       this.searchDocuments(
         searchParams,
         this.documentService.searchIncomingDocuments$.bind(this.documentService)
       );
-    } else if (searchParams.documentType === 'outgoing') {
+    } else if (searchParams.documentType === 'outgoing-document') {
       this.searchDocuments(
         searchParams,
         this.documentService.searchOutgoingDocuments$.bind(this.documentService)
@@ -477,7 +477,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
 
     // Reset display settings
     this.displayedColumns.set(
-      this.searchParams().documentType === 'incoming' 
+      this.searchParams().documentType === 'incoming-document' 
         ? this.incomingColumns 
         : this.outgoingColumns
     );
@@ -566,7 +566,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    * @param field The field name to update
    * @param value The new value
    */
-  onChange(field: string, value: string | undefined): void {
+  onChange(field: string, value: "incoming-document" | "outgoing-document"): void {
     try {
       const currentParams = this.searchParams();
       const updatedParams = { ...currentParams } as Record<string, any>;
@@ -584,7 +584,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
       }
 
       // Ensure value is a string
-      const docTypeValue: string = value || '';
+      const docTypeValue = value;
         
       // Check if the value is actually different
       if (currentParams.documentType !== docTypeValue) {
@@ -596,7 +596,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
           
           // Update displayed columns
           this.displayedColumns.set(
-            docTypeValue === 'incoming' ? this.incomingColumns : this.outgoingColumns
+            docTypeValue === 'incoming-document' ? this.incomingColumns : this.outgoingColumns
           );
           
           // Reset all form fields except document type
@@ -626,7 +626,7 @@ export class SearchDocumentComponent implements OnInit, AfterViewInit {
    * Reset form for document type change
    * Preserves document type while clearing other fields
    */
-  private resetFormForDocumentTypeChange(documentType: string) {
+  private resetFormForDocumentTypeChange(documentType: "incoming-document" | "outgoing-document") {
     try {
       // Create a new form state with the preserved document type
       const newParams: SearchParams = {

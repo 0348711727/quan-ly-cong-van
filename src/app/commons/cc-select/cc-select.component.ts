@@ -11,14 +11,13 @@ import {
   PipeTransform
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { L10nTranslateAsyncPipe } from 'angular-l10n';
 
 @Pipe({
   name: 'findLabel',
   standalone: true
 })
-export class FindLabelPipe implements PipeTransform {
-  transform(options: { label: string; value: string | null }[], value: string | null): string {
+export class FindLabelPipe<Y> implements PipeTransform {
+  transform(options: { label: string; value: Y }[], value: Y): string {
     if (!options || !value) return '';
     const option = options.find(opt => opt.value === value);
     return option ? option.label : '';
@@ -32,18 +31,18 @@ export class FindLabelPipe implements PipeTransform {
   templateUrl: './cc-select.component.html',
   styleUrl: './cc-select.component.scss',
 })
-export class CcSelectComponent {
-  @Input() options: { label: string; value: string | null }[] = [];
+export class CcSelectComponent<T> {
+  @Input() options: { label: string; value: T }[] = [];
   @Input() label: string = '';
-  @Input() defaultValue: string | null = null;
+  @Input() defaultValue!: T;
   private readonly elementRef: ElementRef = inject(ElementRef);
   constructor() {}
-  @Output() onChange = new EventEmitter<string | null>();
-  @Output() valueChange = new EventEmitter<string | null>();
+  @Output() onChange = new EventEmitter<T>();
+  @Output() valueChange = new EventEmitter<T>();
   @ViewChild('dropdown') dropdown!: ElementRef;
   @Input() width: string = '';
 
-  value: string | null = '';
+  value!: T;
 
   ngOnInit() {
     if (this.defaultValue) {
@@ -57,7 +56,7 @@ export class CcSelectComponent {
     this.dropdown.nativeElement.style.display =
       currentDisplay === 'block' ? 'none' : 'block';
   }
-  selectValue(value: string | null) {
+  selectValue(value: T) {
     this.value = value;
     this.onChange.emit(value);
     this.valueChange.emit(value);

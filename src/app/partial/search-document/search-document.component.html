@@ -10,8 +10,8 @@
             #selectDocumentType
             label="Loại văn bản"
             [options]="documentTypeOptions"
-            [defaultValue]="searchParams().documentType || 'incoming'"
-            (valueChange)="onChange('documentType', $event || '')"
+            [defaultValue]="searchParams().documentType || 'incoming-document'"
+            (valueChange)="onChange('documentType', $event)"
           ></cc-select>
         </div>
       </div>

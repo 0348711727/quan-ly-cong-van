@@ -24,6 +24,53 @@ table thead tr {
   animation-fill-mode: forwards;
 }
 
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  
+  .attachment-item {
+    margin-bottom: 3px;
+    
+    .file-name {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.9em;
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #2196F3;
+      cursor: pointer;
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+        color: #0d8aee;
+      }
+    }
+
+    .no-file-name {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.9em;
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #818588;
+      // cursor: none;
+      pointer-events: none;
+      text-decoration: none;
+    }
+  }
+  
+  .attachment-count {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 2px;
+  }
+}
+
 @keyframes pulseBackground {
   0% {
     background-color: #b3e5fc;

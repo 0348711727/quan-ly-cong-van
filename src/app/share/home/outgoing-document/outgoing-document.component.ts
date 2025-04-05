@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgClass } from '@angular/common';
 import {
   Component,
   EventEmitter,
@@ -16,6 +16,7 @@ import { MessageService } from 'primeng/api';
 import { DocumentService } from '../../../services/document.service';
 import { MOVE_CV } from '../../constant';
 import { RecipientLabelPipe } from '../../pipes/recipient-label.pipe';
+import { AttachmentDetail } from '../../../commons/constants';
 
 @Component({
   selector: 'app-outgoing-document',
@@ -26,6 +27,7 @@ import { RecipientLabelPipe } from '../../pipes/recipient-label.pipe';
     MatPaginatorModule,
     L10nTranslateAsyncPipe,
     RecipientLabelPipe,
+    NgClass
   ],
   templateUrl: './outgoing-document.component.html',
   styleUrl: './outgoing-document.component.scss',
@@ -34,6 +36,8 @@ export class OutgoingDocumentComponent implements OnInit {
   protected router: Router = inject(Router);
   protected documentService = inject(DocumentService);
   protected messageService = inject(MessageService);
+
+  showNoAttachmentsMessage = signal<boolean>(false);
 
   // Signals for component state
   allDocuments = signal<any[]>([]);
@@ -133,17 +137,12 @@ export class OutgoingDocumentComponent implements OnInit {
 
   loadOutgoingDocuments() {
     this.documentService.getOutgoingDocuments(1, 1000).subscribe({
-      next: (response: any) => {
+      next: async (response: any) => {
         if (response && response.data) {
           const { documents } = response.data;
 
           // Enhance documents with attachment information
-          const enhancedDocuments = documents.map((doc: any) => {
-            return {
-              ...doc,
-              attachments: doc.fileUrls && doc.fileUrls.length > 0,
-            };
-          });
+          const enhancedDocuments = await Promise.all(documents.map((doc: any) => this.mappingDataForDisplaying(doc)));
 
           // Store all documents
           this.allDocuments.set(enhancedDocuments);
@@ -155,6 +154,8 @@ export class OutgoingDocumentComponent implements OnInit {
           const finishedDocs = enhancedDocuments.filter(
             (doc: any) => doc.status !== 'waiting'
           );
+
+          console.log(waitingDocs, finishedDocs);
 
           this.waitingTotalItems.set(waitingDocs.length);
           this.finishedTotalItems.set(finishedDocs.length);
@@ -169,6 +170,41 @@ export class OutgoingDocumentComponent implements OnInit {
         });
       },
     });
+  }
+
+  private async mappingDataForDisplaying(document: any) {
+    const attachmentData = await this.getAttachmentUrls(document.attachments);
+    return {
+      ...document,
+      attachmentDetails: attachmentData,
+    }
+  }
+
+  private async getAttachmentUrls(attachments: string[] | undefined): Promise<AttachmentDetail[]> {
+    if (!attachments) return [];
+
+    try {
+      const urlPromises = attachments.map(async (attachment) => {
+        return new Promise<AttachmentDetail>((resolve, reject) => {
+          this.documentService.downloadAttachment$(attachment, "outgoing-document")
+            .subscribe({
+              next: (blob: any) => {
+                const url = window.URL.createObjectURL(blob);
+                resolve({fileName: attachment, fileUrl: url});
+              },
+              error: (err: any) => {
+                console.error('Error downloading attachment:', err);
+                resolve({fileName: attachment, fileUrl: ''});
+              }
+            });
+        });
+      });
+      
+      return await Promise.all(urlPromises);
+    } catch (error) {
+      console.error('Error retrieving attachment URLs:', error);
+      return [];
+    }
   }
 
   handleWaitingPageEvent(event: PageEvent) {
@@ -294,11 +330,6 @@ export class OutgoingDocumentComponent implements OnInit {
             // Save ID of recently finished document to highlight it
             this.recentlyFinishedDoc.set(document.id);
 
-            // Remove highlight after 3 seconds
-            setTimeout(() => {
-              this.recentlyFinishedDoc.set(null);
-            }, 3000);
-
             // Update total elements in pagination
             const waitingDocs = newAllDocs.filter(
               (doc) => doc.status === 'waiting'
@@ -411,11 +442,6 @@ export class OutgoingDocumentComponent implements OnInit {
 
             // Save ID of recently recovered document to highlight it
             this.recentlyRecoveredDoc.set(document.id);
-
-            // Remove highlight after 3 seconds
-            setTimeout(() => {
-              this.recentlyRecoveredDoc.set(null);
-            }, 3000);
 
             // Update total elements in pagination
             const waitingDocs = newAllDocs.filter(
@@ -531,5 +557,33 @@ export class OutgoingDocumentComponent implements OnInit {
         this.finishedCurrentPage.set(targetPage);
       }
     }
+  }
+
+  getShortFileName(filename: string): string {
+    // Split filename by hyphen to get the part without timestamp
+    const parts = filename.split('-');
+    
+    // If there is a timestamp at the beginning (standard format), remove it
+    if (parts.length > 1 && !isNaN(Number(parts[0]))) {
+      // Remove the first part (timestamp) and join the remaining parts
+      return parts.slice(1).join('-');
+    }
+    
+    // If not in the right format or no timestamp, return the original name
+    return filename;
+  }
+
+  downloadAttachment(fileUrl: string, fileName: string) {
+    if (!fileUrl) return;
+    this.showNoAttachmentsMessage.set(false);
+
+    const a = document.createElement('a');
+    a.href = fileUrl;
+    a.download = this.getShortFileName(fileName);
+    a.click();
+
+    // Cleanup
+    window.URL.revokeObjectURL(fileUrl);
+    window.document.body.removeChild(a);
   }
 }

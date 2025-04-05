@@ -99,7 +99,7 @@ export class ExportService {
       return;
     }
 
-    const isIncomingDocument = searchParams.documentType === 'incoming';
+    const isIncomingDocument = searchParams.documentType === 'incoming-document';
     
     const headerRow: TableRow = this.createHeaderRow(isIncomingDocument);
     const dataRows: TableRow[] = this.createDataRows(documents, isIncomingDocument);
@@ -128,7 +128,7 @@ export class ExportService {
       document.body.appendChild(a);
       a.style.display = "none";
       
-      const documentType = searchParams.documentType === 'incoming' ? 'Văn bản đến' : 'Văn bản đi';
+      const documentType = searchParams.documentType === 'incoming-document' ? 'Văn bản đến' : 'Văn bản đi';
       const fileName = `${documentType}_${new Date().toLocaleDateString('vi-VN')}.docx`;
       
       a.href = url;

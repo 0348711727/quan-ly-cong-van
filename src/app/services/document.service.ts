@@ -25,13 +25,10 @@ export class DocumentService {
     });
   }
 
-  downloadAttachment$(filename: string, documentType: string) {
+  downloadAttachment$(filename: string, documentType: "incoming-document" | "outgoing-document") {
+    const routeName = documentType === "incoming-document" ? "incoming-documents" : "outgoing-documents";
     return this.httpClientService.comonGet({
-      url: `${environment.RESOURCE_URL}/${
-        documentType === 'incoming'
-          ? 'incoming-documents'
-          : 'outgoing-documents'
-      }/attachments/${filename}`,
+      url: `${environment.RESOURCE_URL}/${routeName}/attachments/${filename}`,
       responseType: 'blob',
     });
   }
