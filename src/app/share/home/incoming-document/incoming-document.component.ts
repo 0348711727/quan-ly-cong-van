@@ -133,6 +133,11 @@ export class IncomingDocumentComponent implements OnInit {
 
   ngOnInit() {
     this.loadIncomingDocuments();
+
+    // Check if there's a document to highlight from the document service
+    if (this.documentService.currentAdd()) {
+      this.goToDocument(this.documentService.currentAdd());
+    }
   }
 
   loadIncomingDocuments() {
@@ -217,6 +222,36 @@ export class IncomingDocumentComponent implements OnInit {
   returnDocument(document: any) {
     localStorage.setItem('action', 'Sửa');
     this.router.navigateByUrl('add-document', { state: { data: document } });
+
+    // Highlight và scroll đến document
+    this.recentlyFinishedDoc.set(document.id);
+
+    // Tính toán vị trí pagination
+    const allDocs = this.allDocuments();
+    const finishedDocs = allDocs.filter((doc) => doc.status !== 'waiting');
+
+    const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+      const numA =
+        typeof a.documentNumber === 'string'
+          ? parseInt(a.documentNumber.replace(/\D/g, ''))
+          : a.documentNumber;
+      const numB =
+        typeof b.documentNumber === 'string'
+          ? parseInt(b.documentNumber.replace(/\D/g, ''))
+          : b.documentNumber;
+      return numA - numB;
+    });
+
+    const docPositionInSorted = sortedFinishedDocs.findIndex(
+      (doc) => doc.id === document.id
+    );
+
+    if (docPositionInSorted !== -1) {
+      const targetPage = Math.floor(
+        docPositionInSorted / this.finishedPageSize()
+      );
+      this.finishedCurrentPage.set(targetPage);
+    }
   }
 
   finishDocument(document: any) {
@@ -365,5 +400,47 @@ export class IncomingDocumentComponent implements OnInit {
     // Cleanup
     window.URL.revokeObjectURL(fileUrl);
     window.document.body.removeChild(a);
+  }
+
+  // Public method to navigate to a specific document
+  goToDocument(documentId: string) {
+    if (!documentId) return;
+    
+    // First set the highlighted document
+    this.recentlyFinishedDoc.set(documentId);
+    
+    // Wait for documents to load
+    setTimeout(() => {
+      const allDocs = this.allDocuments();
+      if (!allDocs.length) return;
+      
+      const doc = allDocs.find(d => d.id === documentId);
+      if (!doc) return;
+      
+      // Calculate the page
+      const finishedDocs = allDocs.filter((d) => d.status !== 'waiting');
+      const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+        const numA =
+          typeof a.documentNumber === 'string'
+            ? parseInt(a.documentNumber.replace(/\D/g, ''))
+            : a.documentNumber;
+        const numB =
+          typeof b.documentNumber === 'string'
+            ? parseInt(b.documentNumber.replace(/\D/g, ''))
+            : b.documentNumber;
+        return numA - numB;
+      });
+
+      const docPositionInSorted = sortedFinishedDocs.findIndex(
+        (d) => d.id === documentId
+      );
+
+      if (docPositionInSorted !== -1) {
+        const targetPage = Math.floor(
+          docPositionInSorted / this.finishedPageSize()
+        );
+        this.finishedCurrentPage.set(targetPage);
+      }
+    }, 300);
   }
 }

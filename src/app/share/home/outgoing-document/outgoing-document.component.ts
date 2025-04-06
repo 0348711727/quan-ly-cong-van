@@ -155,8 +155,6 @@ export class OutgoingDocumentComponent implements OnInit {
             (doc: any) => doc.status !== 'waiting'
           );
 
-          console.log(waitingDocs, finishedDocs);
-
           this.waitingTotalItems.set(waitingDocs.length);
           this.finishedTotalItems.set(finishedDocs.length);
         }
@@ -303,8 +301,6 @@ export class OutgoingDocumentComponent implements OnInit {
 
   // Method for document recovery
   publishDocument(document: any) {
-    console.log(`Publishing document ${document.documentNumber}...`);
-
     // Update status on the server
     this.documentService
       .updateDocumentStatus(document.documentNumber, 'finished', false)
@@ -416,7 +412,6 @@ export class OutgoingDocumentComponent implements OnInit {
 
   // Method to recover a document
   recoverDocument(document: any) {
-    console.log(`Recovering document ${document.documentNumber}...`);
 
     // Update status on the server
     this.documentService

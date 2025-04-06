@@ -21,6 +21,7 @@ import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
 import { DocumentService } from '../../services/document.service';
 import { HttpClientService } from '../../services/http-client.service';
 import { MESSAGE_CODES, MOVE_CV } from '../../share/constant';
+import { AttachmentDetail } from '../../commons/constants';
 
 export type Dropdown = { label: string; value: string | null }[];
 @Component({
@@ -134,7 +135,6 @@ export class AddDocumentComponent {
     this.router.navigate(['../']);
   }
   patchDocument$() {
-    const body: FormData = new FormData();
     /* -------------------IMPROVE LATER BECAUSE WE WILL CREATE SEPERATE DB TO STORE UPLOAD DOCUMENT ---------------------------
 
     body.append(
@@ -144,16 +144,18 @@ export class AddDocumentComponent {
     );
 
 */
+    const body = {
+      ..._.cloneDeep(this.body()),
+      status: 'finished',
+      attachmentDetails: [],
+    };
+
     return this.httpCientService
       .commonPatch({
         url: `${environment.RESOURCE_URL}/incoming-documents/${
           this.body().documentNumber
         }`,
-        body: {
-          ..._.cloneDeep(this.body()),
-          status: 'finished',
-          body,
-        },
+        body,
       })
       .subscribe({
         next: (data: any) => {
