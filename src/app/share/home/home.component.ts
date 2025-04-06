@@ -77,7 +77,13 @@ export class HomeComponent implements OnInit {
   @ViewChild('incomingDocComponent') incomingDocComponent?: IncomingDocumentComponent;
 
   ngOnInit() {
-    // No initialization needed as child components handle their own loading
+    // Kiểm tra query parameters để chuyển tab khi cần
+    const queryParams = this.router.parseUrl(this.router.url).queryParams;
+    
+    // Nếu có tham số 'documentType' và giá trị là 'outgoing', chuyển đến tab outgoing-documents
+    if (queryParams['documentType'] === 'outgoing') {
+      this.value.set('outcomingDocuments');
+    }
   }
 
   addDocument() {

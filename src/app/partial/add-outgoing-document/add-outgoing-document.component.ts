@@ -133,7 +133,7 @@ export class AddOutgoingDocumentComponent {
     this.files.set([]);
   }
   cancel() {
-    this.router.navigate(['../']);
+    this.router.navigate(['']);
   }
   patchDocument$() {
     const body: FormData = new FormData();
@@ -166,7 +166,12 @@ export class AddOutgoingDocumentComponent {
           this.documentService.currentAdd.set(data.document.id);
           this.body.set(this.emptyBody);
           this.error.set({});
-          this.router.navigateByUrl('');
+          this.router.navigate([''], {
+            queryParams: { 
+              documentType: 'outgoing',
+              updated: true
+            }
+          });
         },
         error: ({ error }) => {
           this.error.set(error.errors);
