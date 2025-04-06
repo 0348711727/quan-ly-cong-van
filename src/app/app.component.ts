@@ -1,7 +1,6 @@
 import { Component, signal, WritableSignal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { L10nTranslationModule } from 'angular-l10n';
-import { FooterComponent } from './share/footer/footer.component';
 import { HeaderComponent } from './share/header/header.component';
 
 @Component({
@@ -11,7 +10,7 @@ import { HeaderComponent } from './share/header/header.component';
     HeaderComponent,
     // HomeComponent,
     RouterOutlet,
-    FooterComponent,
+    // FooterComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',

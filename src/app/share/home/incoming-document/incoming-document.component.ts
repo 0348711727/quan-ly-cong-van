@@ -16,6 +16,7 @@ import { MessageService } from 'primeng/api';
 import { DocumentService } from '../../../services/document.service';
 import { MOVE_CV } from '../../constant';
 import { RecipientLabelPipe } from '../../pipes/recipient-label.pipe';
+import { AttachmentDetail } from '../../../commons/constants';
 
 @Component({
   selector: 'app-incoming-document',
@@ -34,6 +35,8 @@ export class IncomingDocumentComponent implements OnInit {
   protected router: Router = inject(Router);
   protected documentService = inject(DocumentService);
   protected messageService = inject(MessageService);
+
+  showNoAttachmentsMessage = signal<boolean>(false);
 
   // Signals for component state
   allDocuments = signal<any[]>([]);
@@ -134,12 +137,14 @@ export class IncomingDocumentComponent implements OnInit {
 
   loadIncomingDocuments() {
     this.documentService.getDocuments(1, 1000).subscribe({
-      next: (response: any) => {
+      next: async (response: any) => {
         if (response && response.data) {
           const { documents } = response.data;
 
+          const enhancedDocuments = await Promise.all(documents.map((doc: any) => this.mappingDataForDisplaying(doc)));
+
           // Store all documents
-          this.allDocuments.set(documents);
+          this.allDocuments.set(enhancedDocuments);
 
           // Calculate total items for each table
           const waitingDocs = documents.filter(
@@ -162,6 +167,41 @@ export class IncomingDocumentComponent implements OnInit {
         });
       },
     });
+  }
+
+  private async mappingDataForDisplaying(document: any) {
+    const attachmentData = await this.getAttachmentUrls(document.attachments);
+    return {
+      ...document,
+      attachmentDetails: attachmentData,
+    }
+  }
+
+  private async getAttachmentUrls(attachments: string[] | undefined): Promise<AttachmentDetail[]> {
+    if (!attachments) return [];
+
+    try {
+      const urlPromises = attachments.map(async (attachment) => {
+        return new Promise<AttachmentDetail>((resolve, reject) => {
+          this.documentService.downloadAttachment$(attachment, "outgoing-document")
+            .subscribe({
+              next: (blob: any) => {
+                const url = window.URL.createObjectURL(blob);
+                resolve({fileName: attachment, fileUrl: url});
+              },
+              error: (err: any) => {
+                console.error('Error downloading attachment:', err);
+                resolve({fileName: attachment, fileUrl: ''});
+              }
+            });
+        });
+      });
+      
+      return await Promise.all(urlPromises);
+    } catch (error) {
+      console.error('Error retrieving attachment URLs:', error);
+      return [];
+    }
   }
 
   handleWaitingPageEvent(event: PageEvent) {
@@ -247,13 +287,13 @@ export class IncomingDocumentComponent implements OnInit {
   }
 
   // Method to update the list after transferring a document
-  updateAfterTransfer(document: any) {
+  updateAfterTransfer(document: any, internalRecipient: string) {
     const allDocs = this.allDocuments();
     const docIndex = allDocs.findIndex((doc) => doc.id === document.id);
 
     if (docIndex !== -1) {
       // Change status from "waiting" to "finished"
-      const updatedDoc = { ...allDocs[docIndex], status: 'finished' };
+      const updatedDoc = { ...allDocs[docIndex], status: 'finished', internalRecipient };
 
       // Update allDocuments array with modified document
       const newAllDocs = [...allDocs];
@@ -297,5 +337,33 @@ export class IncomingDocumentComponent implements OnInit {
         this.finishedCurrentPage.set(targetPage);
       }
     }
+  }
+
+  getShortFileName(filename: string): string {
+    // Split filename by hyphen to get the part without timestamp
+    const parts = filename.split('-');
+    
+    // If there is a timestamp at the beginning (standard format), remove it
+    if (parts.length > 1 && !isNaN(Number(parts[0]))) {
+      // Remove the first part (timestamp) and join the remaining parts
+      return parts.slice(1).join('-');
+    }
+    
+    // If not in the right format or no timestamp, return the original name
+    return filename;
+  }
+
+  downloadAttachment(fileUrl: string, fileName: string) {
+    if (!fileUrl) return;
+    this.showNoAttachmentsMessage.set(false);
+
+    const a = document.createElement('a');
+    a.href = fileUrl;
+    a.download = this.getShortFileName(fileName);
+    a.click();
+
+    // Cleanup
+    window.URL.revokeObjectURL(fileUrl);
+    window.document.body.removeChild(a);
   }
 }

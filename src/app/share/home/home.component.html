@@ -13,7 +13,7 @@
         {{ "Tìm kiếm văn bản" }}
       </cc-button>
       <cc-button (onClick)="addDocument()">
-        {{ "addDocument" | translateAsync }}
+        {{ "addDocument" | translateAsync }} {{ value() === 'incomingDocuments' ? 'đến' : 'đi' }}
       </cc-button>
     </div>
   </div>

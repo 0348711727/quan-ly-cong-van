@@ -148,12 +148,11 @@ export class HomeComponent implements OnInit {
             summary: 'Thành công',
             detail: `Đã cập nhật văn bản số ${document.documentNumber}`,
           });
-          // Marcar como exitoso para notificar al componente hijo
+
           this.lastMoveSuccess.set(true);
           
-          // Si es un documento entrante, actualizar la interfaz
           if (isIncoming && this.incomingDocComponent) {
-            this.incomingDocComponent.updateAfterTransfer(document);
+            this.incomingDocComponent.updateAfterTransfer(document, selectedValue);
           }
         },
         error: (error: any) => {
