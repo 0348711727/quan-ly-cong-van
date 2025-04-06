@@ -106,7 +106,7 @@ export class AddOutgoingDocumentComponent {
     ],
   });
   upload: Signal<FileUpload> = viewChild.required('fu');
-  files: any = signal([]);
+  files: WritableSignal<File[]> = signal([]);
   constructor() {
     const navigation = this.router.getCurrentNavigation();
     const state = navigation?.extras.state;
@@ -130,7 +130,7 @@ export class AddOutgoingDocumentComponent {
     this.files.set(event.currentFiles);
   }
   onRemove() {
-    this.files.set(null);
+    this.files.set([]);
   }
   cancel() {
     this.router.navigate(['../']);
@@ -154,7 +154,7 @@ export class AddOutgoingDocumentComponent {
         body: {
           ..._.cloneDeep(this.body()),
           status: 'finished',
-          body,
+          attachmentDetails: [],
         },
       })
       .subscribe({
@@ -189,7 +189,7 @@ export class AddOutgoingDocumentComponent {
     return this.httpCientService
       .comonPost({
         url: `${environment.RESOURCE_URL}/outgoing-documents`,
-        body: this.body(),
+        body,
       })
       .subscribe({
         next: (data: any) => {
