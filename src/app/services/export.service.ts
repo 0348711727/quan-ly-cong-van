@@ -12,12 +12,13 @@ import { SearchParams, SearchResultDocument } from '../commons/constants';
 export class ExportService {
   // Xuất dữ liệu từ kết quả tìm kiếm vào file Excel
   processAndExportDataToExcel(documents: SearchResultDocument[], documentType: string): void {
+    console.log(documentType);
     if (documents.length === 0) {
       console.warn('Không có dữ liệu để xuất');
       return;
     }
 
-    const isIncomingDocument = documentType === 'incoming';
+    const isIncomingDocument = documentType === 'incoming-document';
     
     const exportData = this.getExportData(documents, isIncomingDocument);
     

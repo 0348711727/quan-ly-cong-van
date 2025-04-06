@@ -133,6 +133,11 @@ export class OutgoingDocumentComponent implements OnInit {
 
   ngOnInit() {
     this.loadOutgoingDocuments();
+    
+    // Check if there's a document to highlight from the document service
+    if (this.documentService.currentAdd()) {
+      this.goToDocument(this.documentService.currentAdd());
+    }
   }
 
   loadOutgoingDocuments() {
@@ -219,6 +224,13 @@ export class OutgoingDocumentComponent implements OnInit {
     this.router.navigateByUrl('add-outgoing-document', {
       state: { data: document },
     });
+    
+    // Highlight document when returning to viewing page
+    if (document.status !== 'waiting') {
+      this.recentlyFinishedDoc.set(document.id);
+    } else {
+      this.recentlyRecoveredDoc.set(document.id);
+    }
   }
 
   finishDocument(document: any) {
@@ -411,9 +423,7 @@ export class OutgoingDocumentComponent implements OnInit {
   }
 
   // Method to recover a document
-  recoverDocument(document: any) {
-
-    // Update status on the server
+  recoverDocument(document: any) {    // Update status on the server
     this.documentService
       .updateDocumentStatus(document.documentNumber, 'waiting', false)
       .subscribe({
@@ -580,5 +590,76 @@ export class OutgoingDocumentComponent implements OnInit {
     // Cleanup
     window.URL.revokeObjectURL(fileUrl);
     window.document.body.removeChild(a);
+  }
+
+  // Public method to navigate to a specific document
+  goToDocument(documentId: string) {
+    if (!documentId) return;
+    
+    // Wait for documents to load
+    setTimeout(() => {
+      const allDocs = this.allDocuments();
+      if (!allDocs.length) return;
+      
+      const doc = allDocs.find(d => d.id === documentId);
+      if (!doc) return;
+      
+      // Set the highlighted document based on its status
+      if (doc.status === 'waiting') {
+        this.recentlyRecoveredDoc.set(documentId);
+        
+        // Calculate the page for waiting documents
+        const waitingDocs = allDocs.filter((d) => d.status === 'waiting');
+        const sortedWaitingDocs = waitingDocs.sort((a, b) => {
+          const numA =
+            typeof a.documentNumber === 'string'
+              ? parseInt(a.documentNumber.replace(/\D/g, ''))
+              : a.documentNumber;
+          const numB =
+            typeof b.documentNumber === 'string'
+              ? parseInt(b.documentNumber.replace(/\D/g, ''))
+              : b.documentNumber;
+          return numA - numB;
+        });
+
+        const docPositionInSorted = sortedWaitingDocs.findIndex(
+          (d) => d.id === documentId
+        );
+
+        if (docPositionInSorted !== -1) {
+          const targetPage = Math.floor(
+            docPositionInSorted / this.waitingPageSize()
+          );
+          this.waitingCurrentPage.set(targetPage);
+        }
+      } else {
+        this.recentlyFinishedDoc.set(documentId);
+        
+        // Calculate the page for finished documents
+        const finishedDocs = allDocs.filter((d) => d.status !== 'waiting');
+        const sortedFinishedDocs = finishedDocs.sort((a, b) => {
+          const numA =
+            typeof a.documentNumber === 'string'
+              ? parseInt(a.documentNumber.replace(/\D/g, ''))
+              : a.documentNumber;
+          const numB =
+            typeof b.documentNumber === 'string'
+              ? parseInt(b.documentNumber.replace(/\D/g, ''))
+              : b.documentNumber;
+          return numA - numB;
+        });
+
+        const docPositionInSorted = sortedFinishedDocs.findIndex(
+          (d) => d.id === documentId
+        );
+
+        if (docPositionInSorted !== -1) {
+          const targetPage = Math.floor(
+            docPositionInSorted / this.finishedPageSize()
+          );
+          this.finishedCurrentPage.set(targetPage);
+        }
+      }
+    }, 300);
   }
 }

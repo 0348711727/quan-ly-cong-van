@@ -188,7 +188,7 @@ export class IncomingDocumentComponent implements OnInit {
     try {
       const urlPromises = attachments.map(async (attachment) => {
         return new Promise<AttachmentDetail>((resolve, reject) => {
-          this.documentService.downloadAttachment$(attachment, "outgoing-document")
+          this.documentService.downloadAttachment$(attachment, "incoming-document")
             .subscribe({
               next: (blob: any) => {
                 const url = window.URL.createObjectURL(blob);
