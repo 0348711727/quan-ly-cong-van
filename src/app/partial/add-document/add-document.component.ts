@@ -21,7 +21,7 @@ import { CcInputComponent } from '../../commons/cc-input/cc-input.component';
 import { DocumentService } from '../../services/document.service';
 import { HttpClientService } from '../../services/http-client.service';
 import { MESSAGE_CODES, MOVE_CV } from '../../share/constant';
-import { AttachmentDetail } from '../../commons/constants';
+import { ListUploadedComponent } from '../list-uploaded/list-uploaded.component';
 
 export type Dropdown = { label: string; value: string | null }[];
 @Component({
@@ -35,6 +35,7 @@ export type Dropdown = { label: string; value: string | null }[];
     ToastModule,
     CcDropdownComponent,
     L10nTranslateAsyncPipe,
+    ListUploadedComponent,
   ],
   providers: [MessageService],
   templateUrl: './add-document.component.html',

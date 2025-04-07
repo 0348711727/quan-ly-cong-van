@@ -13,27 +13,28 @@
         {{ "Tìm kiếm văn bản" }}
       </cc-button>
       <cc-button (onClick)="addDocument()">
-        {{ "addDocument" | translateAsync }} {{ value() === 'incomingDocuments' ? 'đến' : 'đi' }}
+        {{ "addDocument" | translateAsync }}
+        {{ value() === "incomingDocuments" ? "đến" : "đi" }}
       </cc-button>
     </div>
   </div>
 
   <!-- Conditionally show either incoming or outgoing document component -->
   @if(value() === 'incomingDocuments') {
-    <app-incoming-document
-      #incomingDocComponent
-      (openMoveDialog)="openDialog($event)"
-    ></app-incoming-document>
+  <app-incoming-document
+    #incomingDocComponent
+    (openMoveDialog)="openDialog($event)"
+  ></app-incoming-document>
   } @else {
-    <app-outgoing-document
-      (openMoveDialog)="openDialog($event)"
-    ></app-outgoing-document>
+  <app-outgoing-document
+    (openMoveDialog)="openDialog($event)"
+  ></app-outgoing-document>
   }
 </div>
 
-@if(this.httpClient.loading()) {
+<!-- @if(this.httpClient.loading()) {
 <cc-loading></cc-loading>
-}
+} -->
 <ng-template #chuyen>
   <div class="dialog-content-wrapper">
     <cc-radio-group

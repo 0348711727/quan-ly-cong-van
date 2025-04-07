@@ -2,27 +2,28 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   OnInit,
+  TemplateRef,
+  ViewChild,
   inject,
   signal,
   viewChild,
-  TemplateRef,
-  ViewChild,
 } from '@angular/core';
-import { L10nTranslateAsyncPipe } from 'angular-l10n';
-import { MatTableModule } from '@angular/material/table';
-import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { CcToggleGroupComponent } from '../../commons/cc-toggle-group/cc-toggle-group.component';
-import { CcLoadingComponent } from '../../commons/cc-loading/cc-loading.component';
-import { CcRadioGroupComponent } from '../../commons/cc-radio-group/cc-radio-group.component';
-import { Router } from '@angular/router';
-import { DocumentService } from '../../services/document.service';
 import { MatDialog } from '@angular/material/dialog';
-import { CcDialogComponent } from '../../commons/cc-dialog/cc-dialog.component';
+import { MatPaginatorModule } from '@angular/material/paginator';
+import { MatTableModule } from '@angular/material/table';
+import { Router } from '@angular/router';
+import { L10nTranslateAsyncPipe } from 'angular-l10n';
 import { MessageService } from 'primeng/api';
+import { CcButtonComponent } from '../../commons/cc-button/cc-button.component';
+import {
+  CcDialogComponent,
+  TEMPLATE_TYPE,
+} from '../../commons/cc-dialog/cc-dialog.component';
+import { CcRadioGroupComponent } from '../../commons/cc-radio-group/cc-radio-group.component';
+import { CcToggleGroupComponent } from '../../commons/cc-toggle-group/cc-toggle-group.component';
+import { DocumentService } from '../../services/document.service';
 import { HttpClientService } from '../../services/http-client.service';
 import { MOVE_CV } from '../constant';
-import { TEMPLATE_TYPE } from '../../commons/cc-dialog/cc-dialog.component';
 import { IncomingDocumentComponent } from './incoming-document/incoming-document.component';
 import { OutgoingDocumentComponent } from './outgoing-document/outgoing-document.component';
 
@@ -36,7 +37,7 @@ import { OutgoingDocumentComponent } from './outgoing-document/outgoing-document
     CcButtonComponent,
     MatPaginatorModule,
     CcToggleGroupComponent,
-    CcLoadingComponent,
+    // CcLoadingComponent,
     CcRadioGroupComponent,
     IncomingDocumentComponent,
     OutgoingDocumentComponent,
@@ -51,7 +52,7 @@ export class HomeComponent implements OnInit {
   protected router = inject(Router);
   protected documentService = inject(DocumentService);
   protected dialog = inject(MatDialog);
-  
+
   // Toggle for incoming/outgoing documents
   value = signal('incomingDocuments');
   listToggle = signal([
@@ -60,13 +61,13 @@ export class HomeComponent implements OnInit {
     },
     { label: 'outcomingDocuments' },
   ]);
-  
+
   // Constants
   MOVE_CV = MOVE_CV;
-  
+
   // Template reference for the move dialog
   chuyen = viewChild.required<TemplateRef<any>>('chuyen');
-  
+
   // Selected document and option for moving
   selectedOption = signal<string>('management-staff'); // Default to CBQL
   selectedDocument = signal<any>(null);
@@ -74,12 +75,13 @@ export class HomeComponent implements OnInit {
   lastDocumentType = signal<string>('incoming'); // 'incoming' o 'outgoing'
 
   // Component references
-  @ViewChild('incomingDocComponent') incomingDocComponent?: IncomingDocumentComponent;
+  @ViewChild('incomingDocComponent')
+  incomingDocComponent?: IncomingDocumentComponent;
 
   ngOnInit() {
     // Kiểm tra query parameters để chuyển tab khi cần
     const queryParams = this.router.parseUrl(this.router.url).queryParams;
-    
+
     // Nếu có tham số 'documentType' và giá trị là 'outgoing', chuyển đến tab outgoing-documents
     if (queryParams['documentType'] === 'outgoing') {
       this.value.set('outcomingDocuments');
@@ -108,8 +110,10 @@ export class HomeComponent implements OnInit {
     // Store the document being processed
     this.selectedDocument.set(document);
     // Store document type based on current toggle
-    this.lastDocumentType.set(this.value() === 'incomingDocuments' ? 'incoming' : 'outgoing');
-    
+    this.lastDocumentType.set(
+      this.value() === 'incomingDocuments' ? 'incoming' : 'outgoing'
+    );
+
     const data = {
       title: 'Chọn người chuyển',
       templateType: TEMPLATE_TYPE.LITE,
@@ -127,7 +131,7 @@ export class HomeComponent implements OnInit {
     this.lastMoveSuccess.set(false);
     const selectedValue = this.selectedOption();
     const document = this.selectedDocument();
-    
+
     if (!document) {
       this.messageService.add({
         severity: 'error',
@@ -137,16 +141,20 @@ export class HomeComponent implements OnInit {
       this.dialog.closeAll();
       return;
     }
-    
+
     // Determine document type based on stored value
     const isIncoming = this.lastDocumentType() === 'incoming';
-    
+
     // Call API to update document status and internal recipient
     this.documentService
-      .updateDocument(document.documentNumber, {
-        status: 'finished',
-        internalRecipient: selectedValue
-      }, isIncoming)
+      .updateDocument(
+        document.documentNumber,
+        {
+          status: 'finished',
+          internalRecipient: selectedValue,
+        },
+        isIncoming
+      )
       .subscribe({
         next: (response: any) => {
           this.messageService.add({
@@ -156,9 +164,12 @@ export class HomeComponent implements OnInit {
           });
 
           this.lastMoveSuccess.set(true);
-          
+
           if (isIncoming && this.incomingDocComponent) {
-            this.incomingDocComponent.updateAfterTransfer(document, selectedValue);
+            this.incomingDocComponent.updateAfterTransfer(
+              document,
+              selectedValue
+            );
           }
         },
         error: (error: any) => {
@@ -171,7 +182,7 @@ export class HomeComponent implements OnInit {
         },
         complete: () => {
           this.dialog.closeAll();
-        }
+        },
       });
   }
 }

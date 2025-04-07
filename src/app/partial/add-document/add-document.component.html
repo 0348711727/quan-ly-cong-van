@@ -120,6 +120,14 @@
         (onClear)="onRemove()"
       />
     </div>
+
+    } @else {
+    <hr />
+    <app-list-uploaded
+      [listData]="body().attachments"
+      [columns]="['Stt', 'Tên File']"
+      documentType="incoming-document"
+    />
     }
     <div class="button d-flex justify-content-end p-2">
       <cc-button

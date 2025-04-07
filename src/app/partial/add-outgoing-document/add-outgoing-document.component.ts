@@ -22,6 +22,7 @@ import { DocumentService } from '../../services/document.service';
 import { HttpClientService } from '../../services/http-client.service';
 import { MESSAGE_CODES, MOVE_CV } from '../../share/constant';
 import { Dropdown } from '../add-document/add-document.component';
+import { ListUploadedComponent } from '../list-uploaded/list-uploaded.component';
 @Component({
   selector: 'app-add-outgoing-document',
   imports: [
@@ -33,6 +34,7 @@ import { Dropdown } from '../add-document/add-document.component';
     ToastModule,
     CcDropdownComponent,
     L10nTranslateAsyncPipe,
+    ListUploadedComponent,
   ],
   providers: [MessageService],
   templateUrl: './add-outgoing-document.component.html',
@@ -167,10 +169,10 @@ export class AddOutgoingDocumentComponent {
           this.body.set(this.emptyBody);
           this.error.set({});
           this.router.navigate([''], {
-            queryParams: { 
+            queryParams: {
               documentType: 'outgoing',
-              updated: true
-            }
+              updated: true,
+            },
           });
         },
         error: ({ error }) => {
